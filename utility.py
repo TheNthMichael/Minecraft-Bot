@@ -2,8 +2,9 @@
 Module handles all the utility functions and classes for minecraft.py
 """
 
-from cmath import isclose
+from cmath import isclose, nan
 from math import ceil, cos, sin, radians
+from msilib.schema import Error
 import cv2
 import ctypes
 import numpy as np
@@ -20,6 +21,41 @@ from PIL import ImageGrab, Image
 """Transforms the value x from the input range to the output range."""
 def linmap(x, in_min, in_max, out_min, out_max):
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+
+def minecraft_yaw_to_normal(x):
+    """
+    returns the yaw or horizontal rotation from 0 to 360, positive ccw.
+    if (x <= 0):
+        return abs(x)
+    else:
+        return 360 - x
+    """
+    return x + 90
+
+def minecraft_pitch_to_normal(x):
+    """
+    returns the pitch or vertical rotation from -90 to 90, positive ccw, 0 is forward.
+    """
+    return x + 90
+
+
+def yaw_to_minecraft_yaw(x):
+    """
+    returns the yaw or horizontal rotation from (0, -179) ccw and (0, 179) cw. (disgusting)
+    if (x < 180):
+        return -1 * x
+    else:
+        return 360 - x
+    """
+    return x - 90
+    
+
+def pitch_to_minecraft_pitch(x):
+    """
+    returns the pitch or vertical rotation from (-90, 90) -90 being up, 0 being forward, and 90 being down (why?)
+    """
+    return x - 90
 
 
 def get_neighboring_blocks(block_position):
@@ -114,6 +150,9 @@ def process_image(im, crop_to_activity=False, crop_extra=0):
     Converts the image to a numpy array, then applies preprocessing.
     """
     im_arr = np.array(im)
+
+    kernel = np.ones((1,1), np.uint8)
+    im_arr = cv2.dilate(im_arr, kernel, iterations=2)
         
     height, width, depth = im_arr.shape
 
@@ -214,8 +253,44 @@ class BlockRotation:
     def copy(self):
         return BlockRotation(self.rotation.copy(), self.position.copy())
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Vector3):
+            return self.position.__eq__(other.position) and self.rotation.__eq__(other.rotation)
+            #return self.x == other.x and self.y == other.y and self.z == other.z
+        return False
+    
+    def __ne__(self, other):
+        """Overrides the default implementation (unnecessary in Python 3)"""
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.position.__hash__(), self.rotation.__hash__()))
+
+    def copy(self):
+        return BlockRotation(self.position.copy(), self.rotation.copy())
+
+    def __repr__(self) -> str:
+        return f"(x: {self.position}, theta: {self.rotation})"
+
+    def __str__(self) -> str:
+        return f"(x: {self.position}, theta: {self.rotation})"
+
 class Vector3:
-    def __init__(self, x, y, z) -> None:
+    def dot_product(first, second):
+        return first.x * second.x + first.y * second.y + first.z * second.z
+
+    def distance(first, other):
+        return first.subtract(other).magnitude()
+
+    def cross_product(first, second):
+        return Vector3(
+            first.y * second.z - first.z * second.y,
+            -(first.z * second.x - first.x * second.z),
+            first.x * second.y - first.y * second.x
+        )
+
+    def __init__(self, x :float, y :float, z :float) -> None:
         self.x = x
         self.y = y
         self.z = z
@@ -224,15 +299,43 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
-
+    
     def magnitude(self):
         return (self.x**2 + self.y**2 + self.z**2)**0.5
 
     def subtract(self, other):
         return Vector3(self.x - other.x, self.y - other.y, self.z - other.z)
 
+    def __sub__(self, other):
+        return Vector3(self.x - other.x, self.y - other.y, self.z - other.z)
+
     def add(self, other):
         return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)
+    
+    def __add__(self, other):
+        return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def scalar_mult(self, x):
+        return Vector3(self.x * x, self.y * x, self.z * x)
+
+    def __mult__(self, x):
+        if type(x) is Vector3:
+            raise Error("Cannot multiply two vectors, use dot product or cross product helper functions.")
+        return Vector3(self.x * x, self.y * x, self.z * x)
+
+    def scalar_div(self, x):
+        return self.scalar_mult(1.0/x)
+
+    def __div__(self, x):
+        if type(x) is Vector3:
+            raise Error("Cannot divide two vectors?")
+        return self.__mult__(1.0/x)
+
+    def dot_product(self, other):
+        return self.x * other.x + self.y * other.y + self.z * other.z
+
+    def distance(self, other):
+        return self.subtract(other).magnitude()
     
     def rotate_about_origin_xy(self, origin, angle):
         angle = radians(angle)
@@ -259,7 +362,7 @@ class Vector3:
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.x, self.y, self.z))
+        return hash((float(self.x), float(self.y), float(self.z)))
 
     def copy(self):
         return Vector3(self.x, self.y, self.z)
@@ -318,6 +421,7 @@ class Block:
 class Map:
     def __init__(self, init_with_blocks=None, shared_map=None, shared_lock=None) -> None:
         self.current_map = {}
+        self.scans = set()
         self.shared_map = shared_map
         self.shared_lock = shared_lock
         if init_with_blocks != None:
@@ -337,5 +441,11 @@ class Map:
             if self.shared_map is not None:
                 block = Block(position, name)
                 self.shared_map.add(block)
+
+    def add_scan(self, scan: BlockRotation):
+        self.scans.add(scan)
+
+    def already_scanned(self, scan: BlockRotation):
+        return scan in self.scans
 
 

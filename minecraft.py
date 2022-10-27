@@ -1,12 +1,25 @@
 """
 Module offers api for controlling the player through computer vision and simulating keypresses.
 """
-from math import floor
+from math import asin, atan2, floor, pi
 from pathlib import Path
+from threading import currentThread
+from turtle import pos
 from pathfinder import Pathfinder
+from ctypes import windll, Structure, c_long, byref
 
 from utility import *
 import mss
+
+class POINT(Structure):
+    _fields_ = [("x", c_long), ("y", c_long)]
+
+
+
+def queryMousePosition():
+    pt = POINT()
+    windll.user32.GetCursorPos(byref(pt))
+    return { "x": pt.x, "y": pt.y}
 
 class MinecraftPlayer:
     def __init__(self, bb_coords, bb_rotation, bb_block_coords, bb_block_type, shared_map, shared_lock) -> None:
@@ -19,7 +32,9 @@ class MinecraftPlayer:
         self.rotation_regex = re.compile(r'[a-zA-Z]+\([a-zA-Z]+\)\(([+-]?\d+\.\d+)/([+-]?\d+\.\d+)\)')
         self.target_block_position_regex = re.compile(r'([+-]?\d+),([+-]?\d+),([+-]?\d+)')
         self.target_block_type_regex = re.compile(r'(.+)')
+
         self.position = Vector3(0, 0, 0)
+        self.eye_height_offset = Vector3(0, 0.6, 0)
         self.prev_position = None
         self.rotation = Vector2(0, 0)
         self.prev_rotation = None
@@ -50,9 +65,78 @@ class MinecraftPlayer:
 
         self.screen = mss.mss()
 
+    # Create a set of functions that give an idea of the players state.
+    @property
+    def position_at_eye(self):
+        return self.position.add(self.eye_height_offset)
+
+    @property
+    def forward(self):
+        return Vector3(
+            cos(radians(self.pitch_normal)) * sin(radians(self.yaw_normal)),
+            sin(radians(self.pitch_normal)),
+            cos(radians(self.pitch_normal)) * cos(radians(self.yaw_normal))
+        )
+
+    @property
+    def forward_position(self):
+        return self.forward.add(self.position_at_eye)
     
+    @property
+    def yaw_normal(self):
+        return minecraft_yaw_to_normal(self.rotation.x)
+
+    @property
+    def pitch_normal(self):
+        return minecraft_pitch_to_normal(self.rotation.y)
+
+
+    def bearing2vector(self, yaw, pitch, is_radians=False):
+        if not is_radians:
+            pitch = radians(pitch)
+            yaw = radians(yaw)
+        return Vector3(
+            cos(pitch) * sin(yaw),
+            sin(pitch),
+            cos(pitch) * cos(yaw)
+        )
+
+    
+    def look_at(self, position: Vector3):
+        """
+        8hours
+        Looks at the given position. Note, this is eye to exact position.
+        If you pass in the top of a block, it will look exactly at the top of the block.
+        Generally, you will want to pass in the mid-point of the block you want to look at.
+
+        position (Vector3) - A vector containing the position to look at.
+
+        returns A Vector2 containing the desired yaw and pitch difference between the current direction and the desired direction.
+        """
+        fr = self.position_at_eye
+
+        target = position.subtract(fr)
+
+        current = self.forward
+
+        dv = target.subtract(current)
+
+        yaw = atan2(dv.z, dv.x)
+
+        pitch = atan2((dv.z**2 + dv.x**2)**0.5, dv.y)
+
+        yaw *= 180 / pi
+        pitch *= 180 / pi
+
+        return Vector2(yaw_to_minecraft_yaw(yaw), pitch_to_minecraft_pitch(pitch))
+
+
     def add_rotation_to_queue(self, position: Vector2):
         self.action_queue.append({"type": "rotation", "value": position})
+
+    def add_smooth_rotation_to_queue(self, position: Vector2, speed):
+        assert (speed > 0)
+        self.action_queue.append({"type": "rotation", "value": position, "speed": speed})
 
     def add_movement_to_queue(self, units_forward: float):
         self.action_queue.append({"type": "movement", "value": {"units": units_forward, "original": None, "keydown": "None", "slow": False}})
@@ -175,7 +259,12 @@ class MinecraftPlayer:
             rotations = get_neighboring_blocks(block_position)
 
             # Remove unneeded block scans
-            events = [self._get_event("rotation", x.rotation) for x in rotations if x.position not in self.map.current_map]
+            print("--------------------------------------")
+            events = [self._get_event("rotation", x.rotation) for x in rotations if not x.position in self.map.current_map and not self.map.already_scanned(x)]
+            skipped_events = [x for x in rotations if x.position in self.map.current_map or self.map.already_scanned(x)]
+            for x in rotations:
+                self.map.add_scan(x)
+            print(f"Events: {len(events)} -> !Events: {len(skipped_events)} (total: {len(rotations)})")
             self.action_queue[0]["value"]["state"] = "move"
             events.append(self.action_queue[0])
             
@@ -606,11 +695,28 @@ class MinecraftPlayer:
         if abs(mouse_y) < error_tol:
             mouse_y = 0
 
-        mx = linmap(mouse_x, -360, 360, -1500, 1500)
-        my = linmap(mouse_y, -90, 90, -600, 600)
+        #mx = linmap(mouse_x, -360, 360, -1500, 1500)
+        #my = linmap(mouse_y, -90, 90, -600, 600)
+
+        # 0.15 pixels per degree
+        #360/0.15 = 2400
+
+        xspeed = 2390
+        yspeed = 590
+
+        # Exact movement
+        #xspeed = 2400
+        #yspeed = 600
+
+        if "speed" in self.action_queue[0]:
+            speed = self.action_queue[0]["speed"]
+            xspeed *= speed
+            yspeed *= speed
+
+        mx = linmap(mouse_x, -360, 360, -xspeed, xspeed)
+        my = linmap(mouse_y, -90, 90, -yspeed, yspeed)
 
         if abs(mouse_x) < error_tol and abs(mouse_y) < error_tol:
-            #print(f"Done rotating to {desired_rotation}")
             return True
         else:
             mx = ceil(mx)
@@ -671,7 +777,7 @@ class MinecraftPlayer:
         self.prev_time = self.time
 
         if block_pos and block_type:
-            #print(f"Adding block to map {self.target_type}: {self.target_position}")
+            # print(f"Adding block to map {self.target_type}: {self.target_position}")
             self.map.add_block(self.target_type, self.target_position.copy())
         if coord and rot:
             # Go through actions
@@ -703,10 +809,11 @@ class MinecraftPlayer:
             self.prev_position.reassign(self.position.x, self.position.y, self.position.z)
 
             if speed.magnitude() > self.max_speed_tolerance:
-                print("Coord error, invalid speed")
+                pass
+                #print("Coord error, invalid speed")
             #print(f"\tCoords - X: {self.position.x}, Y: {self.position.y}, Z: {self.position.z}", f"\t\tSpeed - dx: {dx}, dy: {dy}, dz: {dz}, dt: {dt}")
         else:
-            print(f"[Error] Could not parse coordinates this frame: {pos_text}")
+            # print(f"[Error] Could not parse coordinates this frame: {pos_text}")
             return False
         return True
 
@@ -768,7 +875,7 @@ class MinecraftPlayer:
                 #print("Coord error, invalid speed")
             #print(f"\tTargetCoords - X: {self.target_position.x}, Y: {self.target_position.y}, Z: {self.target_position.z}", f"\t\tSpeed - dx: {dx}, dy: {dy}, dz: {dz}, dt: {dt}")
         else:
-            #print(f"[Error] Could not parse target coordinates this frame: {block_position_text}")
+            # print(f"[Error] Could not parse target coordinates this frame: {block_position_text}")
             return False
         return True
 
@@ -781,6 +888,6 @@ class MinecraftPlayer:
             self.target_type = match.group(0)
             #print(f"\tTargetType - {self.target_type}")
         else:
-            #print(f"[Error] Could not parse target type this frame: {block_type_text}")
+            # print(f"[Error] Could not parse target type this frame: {block_type_text}")
             return False
         return True
