@@ -1,6 +1,7 @@
 """
 Module offers api for controlling the player through computer vision and simulating keypresses.
 """
+from cmath import atan
 from math import asin, atan2, floor, pi
 from pathlib import Path
 from threading import currentThread
@@ -73,9 +74,9 @@ class MinecraftPlayer:
     @property
     def forward(self):
         return Vector3(
-            cos(radians(self.pitch_normal)) * sin(radians(self.yaw_normal)),
-            sin(radians(self.pitch_normal)),
-            cos(radians(self.pitch_normal)) * cos(radians(self.yaw_normal))
+            cos(radians(self.pitch_normal)) * sin(radians(self.yaw_normal)), # right
+            sin(radians(self.pitch_normal)),    # up
+            cos(radians(self.pitch_normal)) * cos(radians(self.yaw_normal)) # forward
         )
 
     @property
@@ -96,15 +97,15 @@ class MinecraftPlayer:
             pitch = radians(pitch)
             yaw = radians(yaw)
         return Vector3(
-            cos(pitch) * sin(yaw),
-            sin(pitch),
-            cos(pitch) * cos(yaw)
+            cos(pitch) * sin(yaw), # right
+            sin(pitch), # up
+            cos(pitch) * cos(yaw) # forward
         )
 
     
     def look_at(self, position: Vector3):
         """
-        8hours
+        9hours
         Looks at the given position. Note, this is eye to exact position.
         If you pass in the top of a block, it will look exactly at the top of the block.
         Generally, you will want to pass in the mid-point of the block you want to look at.
@@ -113,7 +114,7 @@ class MinecraftPlayer:
 
         returns A Vector2 containing the desired yaw and pitch difference between the current direction and the desired direction.
         """
-        fr = self.position_at_eye
+        """fr = self.position_at_eye
 
         target = position.subtract(fr)
 
@@ -128,11 +129,25 @@ class MinecraftPlayer:
         yaw *= 180 / pi
         pitch *= 180 / pi
 
+        return Vector2(yaw_to_minecraft_yaw(yaw), pitch_to_minecraft_pitch(pitch))"""
+        # Just as shrimple as that.
+        fr = self.position_at_eye
+        target = position.subtract(fr)
+        mag = target.magnitude()
+        target = target.scalar_div(mag)
+
+        pitch = asin(target.y) * (180.0 / pi)
+        yaw = atan2(target.x, target.z) * (180.0 / pi)
+        #pitch = atan2((target.z**2 + target.x**2)**0.5, target.y) * (180.0 / pi)
+        #yaw = atan2(target.z, target.x) * (180.0 / pi)
         return Vector2(yaw_to_minecraft_yaw(yaw), pitch_to_minecraft_pitch(pitch))
 
 
     def add_rotation_to_queue(self, position: Vector2):
         self.action_queue.append({"type": "rotation", "value": position})
+
+    def add_look_at_to_queue(self, position: Vector3):
+        self.action_queue.append({"type": "lookat", "value": position})
 
     def add_smooth_rotation_to_queue(self, position: Vector2, speed):
         assert (speed > 0)
@@ -177,8 +192,13 @@ class MinecraftPlayer:
         
         action = self.action_queue[0]
 
+
         if action["type"] == "rotation":
             result = self.serve_rotation()
+            if result:
+                self.action_queue.pop(0)
+        elif action["type"] == "lookat":
+            result = self.serve_lookat()
             if result:
                 self.action_queue.pop(0)
         elif action["type"] == "movement":
@@ -701,12 +721,12 @@ class MinecraftPlayer:
         # 0.15 pixels per degree
         #360/0.15 = 2400
 
-        xspeed = 2390
-        yspeed = 590
+        #xspeed = 2390
+        #yspeed = 590
 
         # Exact movement
-        #xspeed = 2400
-        #yspeed = 600
+        xspeed = 2400
+        yspeed = 600
 
         if "speed" in self.action_queue[0]:
             speed = self.action_queue[0]["speed"]
@@ -725,6 +745,10 @@ class MinecraftPlayer:
             ctypes.windll.user32.mouse_event(0x01, int(mx), int(-my), 0, 0)
         return False
 
+    def serve_lookat(self):
+        pos = self.action_queue[0]["value"]
+        v = self.look_at(pos)
+        self.add_rotation_to_queue(v)
     
     def update(self, api):
         """

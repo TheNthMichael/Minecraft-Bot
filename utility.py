@@ -31,14 +31,15 @@ def minecraft_yaw_to_normal(x):
     else:
         return 360 - x
     """
-    return x + 90
-
-def minecraft_pitch_to_normal(x):
-    """
-    returns the pitch or vertical rotation from -90 to 90, positive ccw, 0 is forward.
-    """
-    return x + 90
-
+    # 0, -179.9999 -> 0, 179.9999
+    # 179.9999, 0 -> 18.00001, 360
+    if x < 180:
+        return -1 * x
+    elif x > 180:
+        return 360 - x
+    else:
+        return 180 # not possible
+    #return x + 90
 
 def yaw_to_minecraft_yaw(x):
     """
@@ -48,14 +49,29 @@ def yaw_to_minecraft_yaw(x):
     else:
         return 360 - x
     """
-    return x - 90
+    if x < 180:
+        return -1 * x
+    elif x > 180:
+        return -x + 360
+    else:
+        return 179.9999
+    #return x - 90
+
+
+def minecraft_pitch_to_normal(x):
+    """
+    returns the pitch or vertical rotation from 0 to 180, negative ccw, 90 is forward.
+    """
+    return -x
+    #return x + 90
     
 
 def pitch_to_minecraft_pitch(x):
     """
     returns the pitch or vertical rotation from (-90, 90) -90 being up, 0 being forward, and 90 being down (why?)
     """
-    return x - 90
+    return -x
+    #return x - 90
 
 
 def get_neighboring_blocks(block_position):

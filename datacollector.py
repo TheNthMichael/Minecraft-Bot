@@ -270,6 +270,40 @@ def fstahce_lidar(player: MinecraftPlayer, r):
     * We really don't need to have precise knowledge of the sky though.
     * Could use a guess and branch method. to fill in gaps since we can assume most area's covering the sky cover a decent portion. 
     """
+    """
+    Ah this requires updating the scan at runtime
+    slow-*** lidar, scans the r-sphere around the player.
+    no optimizations used, hence the name.
+    """
+    # Start here.
+    player.add_rotation_to_queue(Vector2(179.9,0))
+
+    # Don't forget that rotation is really messed up, use conversions.
+    # start at 180
+    
+    # define the new horizon radius.
+    nhr = lambda height, radius: sqrt(radius**2 - height**2)
+    # dtheta = lambda x: 45 / x
+    dtheta = lambda x: 45 / x
+    dy_theta = dtheta(r)
+
+    # Upwards
+    y_theta = 90
+    x_theta = 0
+    for i in range(r):
+        radius = nhr(i, r)
+        for x_theta in range(0, 360, int(dtheta(radius))):
+            player.add_smooth_rotation_to_queue(Vector2(x_theta - 180, y_theta - 90), 1)
+        y_theta -= dy_theta
+
+    # Downwards
+    y_theta = 90
+    x_theta = 0
+    for i in range(r):
+        radius = nhr(i, r)
+        for x_theta in range(0, 360, int(dtheta(radius))):
+            player.add_smooth_rotation_to_queue(Vector2(x_theta - 180, y_theta - 90), 1)
+        y_theta += dy_theta
 
 
 
@@ -308,13 +342,13 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         time.sleep(3)
         print("Starting")
 
-        player.add_pathfind_coordinate_to_queue(Vector3(46.5, -55, -9.5))
+        #player.add_pathfind_coordinate_to_queue(Vector3(46.5, -55, -9.5))
         #player.add_rotation_to_queue(Vector2(0,0))
         #player.add_rotation_to_queue(Vector2(90,45))
         #player.add_rotation_to_queue(Vector2(-90,-45))
         #player.add_rotation_to_queue(Vector2(179,89))
 
-        #slwahce_lidar(player, 7)
+        #slwahce_lidar(player, 20)
 
         
     
@@ -324,18 +358,22 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         # used to record the time at which we processed current frame
         new_frame_time = 0
 
-        #first_loop=True
+        first_loop=True
+        #starting_position = Vector3(0,0,0)
 
         # Run forever unless you press Esc
         while running.is_set():
 
             success = player.update(api)
 
-            """if (first_loop):
+            if (first_loop):
                 first_loop = False
-                v = player.look_at(player.position.add(Vector3(0,-0.5,-10)))
+                #starting_position = player.position.copy()
+            
+            if len(player.action_queue) == 0:
+                v = player.look_at(Vector3(-20.5,-60.5,54.5))
                 print(f"looking towards {v}. {player.position}")
-                player.add_rotation_to_queue(v)"""
+                player.add_rotation_to_queue(v)
 
             with shared_player_position_lock:
                 shared_player_position.x = player.position.x
