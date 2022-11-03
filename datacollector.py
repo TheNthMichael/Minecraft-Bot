@@ -343,10 +343,15 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         print("Starting")
 
         #player.add_pathfind_coordinate_to_queue(Vector3(46.5, -55, -9.5))
+        player.add_pathfind_coordinate_to_queue(Vector3(62.5, -60, 30.5))
         #player.add_rotation_to_queue(Vector2(0,0))
         #player.add_rotation_to_queue(Vector2(90,45))
         #player.add_rotation_to_queue(Vector2(-90,-45))
         #player.add_rotation_to_queue(Vector2(179,89))
+
+        #player.add_coordinate_to_queue(Vector3(-8.5, -59, -18.5))
+
+        #player.add_coordinate_to_queue(Vector3(-8.5, -59, -20.5))
 
         #slwahce_lidar(player, 20)
 
@@ -358,22 +363,10 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         # used to record the time at which we processed current frame
         new_frame_time = 0
 
-        first_loop=True
-        #starting_position = Vector3(0,0,0)
-
         # Run forever unless you press Esc
         while running.is_set():
 
             success = player.update(api)
-
-            if (first_loop):
-                first_loop = False
-                #starting_position = player.position.copy()
-            
-            if len(player.action_queue) == 0:
-                v = player.look_at(Vector3(-20.5,-60.5,54.5))
-                print(f"looking towards {v}. {player.position}")
-                player.add_rotation_to_queue(v)
 
             with shared_player_position_lock:
                 shared_player_position.x = player.position.x

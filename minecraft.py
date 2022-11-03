@@ -380,7 +380,7 @@ class MinecraftPlayer:
         # Set tolerances
         tap_duration = 0.03
         tap_tolerance = 0.3
-        crouch_tolerance = 2
+        crouch_tolerance = 0.8 # original was 2, current value allows for auto jump to work.
         error_tolerance = 0.05
 
         if abs(delta_position.x) < error_tolerance and abs(delta_position.z) < error_tolerance:
