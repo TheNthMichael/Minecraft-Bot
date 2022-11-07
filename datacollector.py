@@ -1,4 +1,5 @@
 from math import sqrt
+from actions import *
 from cv2 import EVENT_MBUTTONUP
 import tesserocr
 from tesserocr import PyTessBaseAPI, get_languages, PSM, OEM, RIL
@@ -342,20 +343,15 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         time.sleep(3)
         print("Starting")
 
-        #player.add_pathfind_coordinate_to_queue(Vector3(46.5, -55, -9.5))
-        player.add_pathfind_coordinate_to_queue(Vector3(62.5, -60, 30.5))
-        #player.add_rotation_to_queue(Vector2(0,0))
-        #player.add_rotation_to_queue(Vector2(90,45))
-        #player.add_rotation_to_queue(Vector2(-90,-45))
-        #player.add_rotation_to_queue(Vector2(179,89))
+        player.add_action(
+            FastRotationAction(Vector2(0, 0))
+        )
 
-        #player.add_coordinate_to_queue(Vector3(-8.5, -59, -18.5))
+        player.add_action(
+            Pathfind2DAction(Vector3(46.4, -55, -9.5))
+        )
 
-        #player.add_coordinate_to_queue(Vector3(-8.5, -59, -20.5))
-
-        #slwahce_lidar(player, 20)
-
-        
+        #player.add_action(MoveToCoordinateAction(Vector3(-8.5, -60, -27.5)))
     
         # used to record the time when we processed last frame
         prev_frame_time = 0
@@ -377,9 +373,9 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
                 player_forward.z = player.forward_position.z
 
             height, width = player.current_position_image.shape
-            resized_rotation_image = cv2.resize(player.current_rotation_image, (width, height))
-            resized_block_position_image = cv2.resize(player.current_block_position_image, (width, height))
-            resized_block_type_image = cv2.resize(player.current_block_type_image, (width, height))
+            #resized_rotation_image = cv2.resize(player.current_rotation_image, (width, height))
+            #resized_block_position_image = cv2.resize(player.current_block_position_image, (width, height))
+            #resized_block_type_image = cv2.resize(player.current_block_type_image, (width, height))
             
             new_frame_time = time.time()
             fps = 1/(new_frame_time-prev_frame_time)
@@ -390,13 +386,13 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         
             # converting the fps to string so that we can display it on frame
             # by using putText function
-            fps = "fps: "+ str(fps)
-            empty = np.zeros((height, width))
-            cv2.putText(empty, fps, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+            #fps = "fps: "+ str(fps)
+            #empty = np.zeros((height, width))
+            #cv2.putText(empty, fps, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
-            images = (empty, player.current_position_image, resized_rotation_image, resized_block_position_image, resized_block_type_image)
+            #images = (empty, player.current_position_image, resized_rotation_image, resized_block_position_image, resized_block_type_image)
 
-            frame = np.concatenate(images, axis=0)
+            #frame = np.concatenate(images, axis=0)
 
             #cv2.imshow("player", frame)
 

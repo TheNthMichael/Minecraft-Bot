@@ -6,7 +6,7 @@ from utils import *
 from utility import Vector3
 
 
-class Pathfinder3d:
+class Pathfinder3D:
     _MAX_PATH_LENGTH = 100
 
     def __init__(self, start: Vector3, goal: Vector3, map: QueryMap) -> None:
@@ -78,7 +78,7 @@ class Pathfinder3d:
                             s.rhs = min(costs)
                         self.update_vertex(s)
 
-    def iterate_prior(self):
+    def iterate_move(self):
         """
         Decomposed the main loop of d*-lite into one that I can manually iterate.
         """
@@ -92,7 +92,7 @@ class Pathfinder3d:
         # move to self.m_start.
         # get what paths changed (u and v nodes for each path)
 
-    def iterate_post(self, changed_node_pairs):
+    def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start

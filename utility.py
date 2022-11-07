@@ -17,11 +17,26 @@ import cython
 
 from PIL import ImageGrab, Image
 
+# Some math utilities
+def clamp(x, lower, upper):
+    if x < lower:
+        return lower
+    elif x > upper:
+        return upper
+    else:
+        return x
 
-"""Transforms the value x from the input range to the output range."""
+def sign(x):
+    if x < 0:
+        return -1
+    else:
+        return 1
+
 def linmap(x, in_min, in_max, out_min, out_max):
-        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
+    """
+    Transforms the value x from the input range to the output range.
+    """
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 def minecraft_yaw_to_normal(x):
     """
@@ -39,7 +54,6 @@ def minecraft_yaw_to_normal(x):
         return 360 - x
     else:
         return 180 # not possible
-    #return x + 90
 
 def yaw_to_minecraft_yaw(x):
     """
@@ -55,24 +69,18 @@ def yaw_to_minecraft_yaw(x):
         return -x + 360
     else:
         return 179.9999
-    #return x - 90
-
 
 def minecraft_pitch_to_normal(x):
     """
     returns the pitch or vertical rotation from 0 to 180, negative ccw, 90 is forward.
     """
-    return -x
-    #return x + 90
-    
+    return -x    
 
 def pitch_to_minecraft_pitch(x):
     """
     returns the pitch or vertical rotation from (-90, 90) -90 being up, 0 being forward, and 90 being down (why?)
     """
     return -x
-    #return x - 90
-
 
 def get_neighboring_blocks(block_position):
     """
@@ -97,7 +105,6 @@ def get_neighboring_blocks(block_position):
                 BlockRotation(Vector2(90, 60), block_position.add(Vector3(-1, 0, 0))),
                 BlockRotation(Vector2(90, 60), block_position.add(Vector3(-1, -1, 0))),
             ]
-
 
 def get_neighboring_blocks_dict(block_position):
     return {
@@ -132,7 +139,6 @@ def get_neighboring_blocks_dict(block_position):
         },
     }
 
-
 def v_filter_gray(rgb):
     # Expect len 3
     r, g, b = rgb
@@ -152,14 +158,11 @@ def v_filter_gray(rgb):
         return 0
     return rgb
 
-
-
 def filter_gray(na):
     mean = np.mean(na, axis=2, keepdims=True)
 
     res = (na[..., 2] / na[..., 0]) * 100/l
     return res.astype(np.uint8)
-
 
 def process_image(im, crop_to_activity=False, crop_extra=0):
     """
@@ -236,7 +239,6 @@ def process_image(im, crop_to_activity=False, crop_extra=0):
 
     return im_arr
 
-
 def image_to_text(api, image, crop_to_activity=False, crop_extra=0):
     """
     Returns the text and the processed image as a numpy array.
@@ -249,7 +251,6 @@ def image_to_text(api, image, crop_to_activity=False, crop_extra=0):
         image = Image.fromarray(np.uint8(image_array))
     api.SetImage(image)
     return api.GetUTF8Text(), image_array
-
 
 def press_key_for_t(key, t):
     start_time = time.time()
@@ -413,7 +414,6 @@ class Vector2:
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
-
 class Block:
     def __init__(self, position: Vector3, block_type) -> None:
         self.position = position
@@ -432,7 +432,6 @@ class Block:
     def __eq__(self, other):
         if not isinstance(other, type(self)): return NotImplemented
         return self.position.x == other.position.x and self.position.y == other.position.y and self.position.z == other.position.z
-
 
 class Map:
     def __init__(self, init_with_blocks=None, shared_map=None, shared_lock=None) -> None:

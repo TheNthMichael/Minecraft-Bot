@@ -47,7 +47,7 @@ possible_actions = [
     Vector3(0, 1, -1),
 ]
 
-def can_move_preconditions(y_level, ground, air1, air2, air3):
+def satisfies_move_preconditions(y_level, ground, air1, air2, air3):
     """
     Logic for determining if a move on any block is allowed.
     Gives the freedom for impossible moves if we have uncertain knowledge
@@ -121,7 +121,7 @@ class MapNode:
         air2_element = map.get(air2)
         air3_element = map.get(air3)
 
-        if not can_move_preconditions(y_level, ground_element, air1_element, air2_element, air3_element):
+        if not satisfies_move_preconditions(y_level, ground_element, air1_element, air2_element, air3_element):
             # cost to go to node is inf since it is not possible.
             return float('inf')
         else:
@@ -161,11 +161,17 @@ class QueryMap:
             self.map.pop(element.position, None)
             self.map[element.position] = element
 
-    def add_scan(self, position, scan):
+    def add_scan(self, position: Vector3, scan: Vector2):
+        """
+        Add a scan to the MapNode at the given position.
+        """
         if position in self.map:
             self.map[position].scans.append(scan)
 
     def get(self, position: Vector3) -> MapNode:
+        """
+        returns the MapNode at the given position or None if it does not exist.
+        """
         if position not in self.map:
             return None
         return self.map[position]
@@ -173,9 +179,5 @@ class QueryMap:
     def delete(self, position: Vector3):
         """
         Removes the element in the given position from the map.
-        We can determine if an element has been removed by checking for scan consistency.
-        If a ray from a scan would intersect the block at the given position and the block
-        that the ray hits is a block with a greater ordering than the given position, we can
-        confirm that the block was removed.
         """
         self.map.pop(position, None)
