@@ -7,7 +7,7 @@ from graph import Node, Graph
 from grid import GridWorld
 from utils import *
 from d_star_lite import initDStarLite, moveAndRescan
-from utility import Vector3, Vector2
+from utility import Vector3
 
 
 class Pathfinder:

@@ -138,8 +138,6 @@ class MinecraftPlayer:
 
         pitch = asin(target.y) * (180.0 / pi)
         yaw = atan2(target.x, target.z) * (180.0 / pi)
-        #pitch = atan2((target.z**2 + target.x**2)**0.5, target.y) * (180.0 / pi)
-        #yaw = atan2(target.z, target.x) * (180.0 / pi)
         return Vector2(yaw_to_minecraft_yaw(yaw), pitch_to_minecraft_pitch(pitch))
 
 
