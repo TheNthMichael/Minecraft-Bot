@@ -15,13 +15,15 @@ class Pathfinder3D:
         """
         self.U = PriorityQueue()
         self.k_m = 0
-
+        self.map = map
         self.start = start
         self.m_start = map.get(start)
-        self.m_last = self.m_start
         if self.m_start is None:
-            raise "Error, cannot pathfind without knowing where the ground is (Scan downward before starting)"
-
+            self.m_start = MapNode("ground", start, [])
+            print(f"Starting pathfinder from node {self.m_start.position}-{self.m_start.block_type}")
+            self.map.add(self.m_start)
+            #raise "Error, cannot pathfind without knowing where the ground is (Scan downward before starting)"
+        self.m_last = self.m_start
         self.goal = goal
         self.m_goal = map.get(goal)
         if self.m_goal is None:
@@ -54,7 +56,7 @@ class Pathfinder3D:
 
     def compute_shortest_path(self):
         while self.U.top_key() < self.calculate_key(self.m_start) or self.m_start.rhs > self.m_start.g:
-            u = MapNode(self.U.top())
+            u = self.U.top()
             k_old = self.U.top_key()
             k_new = self.calculate_key(u)
 
@@ -74,7 +76,7 @@ class Pathfinder3D:
                 for s in predecessors_union_u:
                     if s.rhs == s.cost(u, self.map) + g_old:
                         if s != self.m_goal:
-                            costs = [s.cost(s_prime, self.map) + s_prime.g for s_prime in s.successors]
+                            costs = [s.cost(s_prime, self.map) + s_prime.g for s_prime in s.successors(self.map)]
                             s.rhs = min(costs)
                         self.update_vertex(s)
 
@@ -94,6 +96,8 @@ class Pathfinder3D:
 
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
+            print(self.m_last.position)
+            print(self.m_start.position)
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
@@ -103,7 +107,7 @@ class Pathfinder3D:
                         u.rhs = min(u.rhs, new_cost + v.g)
                 elif u.rhs == c_old + v.g:
                     if u != self.m_goal:
-                        costs = [u.cost(s_prime, self.map) + s_prime.g for s_prime in u.successors]
+                        costs = [u.cost(s_prime, self.map) + s_prime.g for s_prime in u.successors(self.map)]
                         u.rhs = min(costs)
                 self.update_vertex(u)
         self.compute_shortest_path()

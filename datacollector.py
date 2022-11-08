@@ -344,12 +344,14 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         print("Starting")
 
         player.add_action(
-            FastRotationAction(Vector2(0, 0))
+            FastRotationAction(Vector2(0, 90))
         )
 
         player.add_action(
-            Pathfind2DAction(Vector3(46.4, -55, -9.5))
+            # Pathfind3DAction(Vector3(46.4, -55, -9.5))
+            Pathfind3DAction(Vector3(34.5, -53, -7.5))
         )
+
 
         #player.add_action(MoveToCoordinateAction(Vector3(-8.5, -60, -27.5)))
     

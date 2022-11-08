@@ -18,6 +18,7 @@ Class Action(BaseAction):
 import ctypes
 import time
 from math import floor, ceil
+from map import MapNode
 from pathfinder import Pathfinder
 from pathfinder3d import Pathfinder3D
 import pydirectinput
@@ -374,7 +375,7 @@ class Pathfind2DAction(BaseAction):
 class Pathfind3DAction(BaseAction):
     def __init__(self, goal: utility.Vector3) -> None:
         self.goal = goal
-        self.state = "scan"
+        self.state = "rawscan"
         self.start = None
         self.pathfinder = None
         self.edge_costs_prior = {}
@@ -386,7 +387,7 @@ class Pathfind3DAction(BaseAction):
             self.pathfinder = Pathfinder3D(
                 self.start.copy(),
                 self.goal.copy(),
-                agent.map
+                agent.qmap
             )
 
         current_position = agent.position.copy()
@@ -399,31 +400,140 @@ class Pathfind3DAction(BaseAction):
 
         delta_position = self.goal.subtract(current_position)
 
-        if abs(delta_position.x) < self.coordinate_tolerance\
-            and abs(delta_position.z) < self.coordinate_tolerance\
-            and abs(delta_position.y) < self.coordinate_tolerance:
+        if abs(delta_position.x) < 0.8\
+            and abs(delta_position.z) < 0.8\
+            and abs(delta_position.y) < 0.8:
             print(f"[INFO] Pathfinding complete, arrived at {self.goal} with error {delta_position}")
             return True, []
 
-        if self.state == "scan":
-            self.state = "move"
+        if self.state == "rawscan":
+            self.state = "rawmove"
+            print("rawscan")
             # Record edge costs of neighboring states.
+            successors = self.pathfinder.m_start.successors(agent.qmap)
+            blocks = set()
+            for s_prime in successors:
+                # add block to set to be scanned plus its air nodes.
+                y_level = s_prime.position.subtract(self.pathfinder.m_start.position)
+                blocks.add(s_prime.position)
+                blocks.add(s_prime.position.add(utility.Vector3(0, 1, 0)))
+                blocks.add(s_prime.position.add(utility.Vector3(0, 2, 0)))
+                if y_level != 0:
+                    blocks.add(s_prime.position.add(utility.Vector3(0, 3, 0)))
+                if y_level == 1:
+                    blocks.add(self.pathfinder.m_start.position.add(utility.Vector3(0, 3, 0)))
 
             # Add scans and loopback to queue.
-
-        else:
+            # for all successors, add successor to blocks, followed by 2-3 extra scans if needed.
+            scans = [(x, agent.look_at(x)) for x in blocks]
+            events = [FastRotationAction(scan) for _, scan in scans]
+            events.append(self)
+            for block, scan in scans:
+                agent.qmap.add_scan(self.pathfinder.m_start.position, utility.BlockRotation(scan, block))
+            return True, events
+        elif self.state == "rawmove":
+            print("rawmove")
             self.state = "scan"
             # Based on the scan, insert knowledge nodes into map (only air nodes for now)
-
-            # Based on the scan and knowledge nodes, get new costs for neighbors.
-
-            # Iterate d*-lite scan with nodes that changed cost.
+            scans = self.pathfinder.m_start.scans
+            for scan in scans:
+                # We can tell if a scan resolved an air node by the what exists in the map at that point.
+                element = agent.qmap.get(scan.position)
+                if element is None:
+                    agent.qmap.add(MapNode("air", scan.position, []))
+                elif element.block_type == "uncertain":
+                    element.block_type = "air"
+                    agent.qmap.update(element, False)
 
             # Get move from d*-lite move
+            next_state = self.pathfinder.iterate_move()
+
+            if next_state is None:
+                print(f"Arrived at goal {self.goal}")
+                return True, []
 
             # Add move and loopback to queue unless at goal.
-            
+            events = [MoveToCoordinateAction(next_state.position), self]
 
+            return True, events
+
+        elif self.state == "scan":
+            print("scan")
+            self.state = "move"
+            # Record edge costs of neighboring states.
+            self.edge_costs_prior = {} # reset the prior costs.
+            successors = self.pathfinder.m_start.successors(agent.qmap)
+            blocks = set()
+            for s_prime in successors:
+                # recording both costs (may not be needed if cost is symmetric)
+                cost_a = self.pathfinder.m_start.cost(s_prime, agent.qmap)
+                cost_b = s_prime.cost(self.pathfinder.m_start, agent.qmap)
+                self.edge_costs_prior[(self.pathfinder.m_start.position, s_prime.position)] = (self.pathfinder.m_start, s_prime, cost_a) 
+                self.edge_costs_prior[(s_prime.position, self.pathfinder.m_start.position)] = (s_prime, self.pathfinder.m_start, cost_b)
+
+                # add block to set to be scanned plus its air nodes.
+                y_level = s_prime.position.subtract(self.pathfinder.m_start.position)
+                blocks.add(s_prime.position)
+                blocks.add(s_prime.position.add(utility.Vector3(0, 1, 0)))
+                blocks.add(s_prime.position.add(utility.Vector3(0, 2, 0)))
+                if y_level != 0:
+                    blocks.add(s_prime.position.add(utility.Vector3(0, 3, 0)))
+                if y_level == 1:
+                    blocks.add(self.pathfinder.m_start.position.add(utility.Vector3(0, 3, 0)))
+
+            # Add scans and loopback to queue.
+            # for all successors, add successor to blocks, followed by 2-3 extra scans if needed.
+            scans = [(x, agent.look_at(x)) for x in blocks]
+            events = [FastRotationAction(scan) for _, scan in scans]
+            events.append(self)
+            for block, scan in scans:
+                agent.qmap.add_scan(self.pathfinder.m_start.position, utility.BlockRotation(scan, block))
+            return True, events
+        else:
+            print("move")
+            self.state = "scan"
+            # Based on the scan, insert knowledge nodes into map (only air nodes for now)
+            scans = self.pathfinder.m_start.scans
+            for scan in scans:
+                # We can tell if a scan resolved an air node by the what exists in the map at that point.
+                element = agent.qmap.get(scan.position)
+                if element is None:
+                    agent.qmap.add(MapNode("air", scan.position, []))
+                elif element.block_type == "uncertain":
+                    element.block_type = "air"
+                    agent.qmap.update(element, True)
+
+            # Based on the scan and knowledge nodes, get new costs for neighbors.
+            successors = self.pathfinder.m_start.successors(agent.qmap)
+            changed_node_pairs = []
+            for s_prime in successors:
+                # recording both costs (may not be needed if cost is symmetric)
+                cost_a = self.pathfinder.m_start.cost(s_prime, agent.qmap)
+                cost_b = s_prime.cost(self.pathfinder.m_start, agent.qmap)
+                _, _, old_cost_a = self.edge_costs_prior[(self.pathfinder.m_start.position, s_prime.position)]
+                _, _, old_cost_b = self.edge_costs_prior[(s_prime.position, self.pathfinder.m_start.position)]
+                
+                if old_cost_a != cost_a:
+                    changed_node_pairs.append((self.pathfinder.m_start, s_prime, old_cost_a))
+                if old_cost_b != cost_b:
+                    changed_node_pairs.append((s_prime, self.pathfinder.m_start, old_cost_b))
+
+            # Iterate d*-lite scan with nodes that changed cost.
+            previous_state = self.pathfinder.m_start
+            self.pathfinder.iterate_scan(changed_node_pairs)
+
+            # Get move from d*-lite move
+            next_state = self.pathfinder.iterate_move()
+            print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}")
+
+            if next_state is None:
+                print(f"Arrived at goal {self.goal}")
+                return True, []
+
+            # Add move and loopback to queue unless at goal.
+            events = [FastRotationAction(agent.look_at(next_state.position)), MoveToCoordinateAction(next_state.position), self]
+
+            return True, events
 
 class ClickAction(BaseAction):
     def __init__(self, msb: str, duration: float) -> None:

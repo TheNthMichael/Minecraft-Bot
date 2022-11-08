@@ -3,6 +3,7 @@ Module offers api for controlling the player through computer vision and simulat
 """
 from math import asin, atan2, floor, pi
 from actions import *
+from map import QueryMap
 from pathfinder import Pathfinder
 from ctypes import windll, Structure, c_long, byref
 
@@ -52,6 +53,7 @@ class MinecraftPlayer:
         self.current_block_type_image = None
 
         self.map = Map(shared_map=shared_map, shared_lock=shared_lock)
+        self.qmap = QueryMap(self.map, None)
 
         self.action_queue = []
 
@@ -192,7 +194,15 @@ class MinecraftPlayer:
 
         if block_pos and block_type:
             # print(f"Adding block to map {self.target_type}: {self.target_position}")
-            self.map.add_block(self.target_type, self.target_position.copy())
+            tpos = self.target_position.copy()
+            self.map.add_block(self.target_type, tpos)
+            element = self.qmap.get(tpos)
+            if element is None:
+                self.qmap.add(MapNode(self.target_type, tpos, []))
+            else:
+                element.block_type = self.target_type
+                self.qmap.update(element, False)
+
         if coord and rot:
             # Go through actions
             self.serve_action()

@@ -11,14 +11,14 @@ app = Ursina()
 # By setting the parent to scene and the model to 'cube' it becomes a 3d button.
 
 class Voxel(Button):
-    def __init__(self, position=(0,0,0), colorrgb=(255, 255, 255)):
+    def __init__(self, position=(0,0,0), colorrgb=(255, 255, 255), alpha=255):
         super().__init__(
             parent = scene,
             position = position,
             model = 'cube',
             origin_y = .5,
             texture = 'white_cube',
-            color = color.rgb(colorrgb[0], colorrgb[1], colorrgb[1]),
+            color = color.rgba(colorrgb[0], colorrgb[1], colorrgb[1], alpha),
             highlight_color = color.lime,
         )
 
@@ -76,9 +76,14 @@ def update():
             sz += block.position.z
             if not block.instantiated:
                 #print(f"Instantiating block {block}")
-                if len(block.type) < 3:
-                    block.type += "extra"
-                voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]])
+                if block.type == "uncertain":
+                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=20)
+                elif block.type == "air":
+                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=60)
+                else:
+                    if len(block.type) < 3:
+                        block.type += "extra"
+                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]])
                 block.instantiated = True
         sl = len(shared_map)
         #print("Num Blocks ", sl)
