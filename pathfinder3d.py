@@ -72,7 +72,8 @@ class Pathfinder3D:
             else:
                 g_old = u.g
                 u.g = float('inf')
-                predecessors_union_u = u.successors(self.map).append(u) # u cannot be its own successor therefore no check for that is needed.
+                predecessors_union_u = u.successors(self.map)
+                predecessors_union_u.append(u) # u cannot be its own successor therefore no check for that is needed.
                 for s in predecessors_union_u:
                     if s.rhs == s.cost(u, self.map) + g_old:
                         if s != self.m_goal:

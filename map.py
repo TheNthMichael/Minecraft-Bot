@@ -122,7 +122,7 @@ class MapNode:
         air2 = other.position.add(Vector3(0,2,0))
         air3 = other.position.add(Vector3(0,3,0))
         air4 = self.position.add(Vector3(0, 3, 0))
-        ground_element = map.get(other)
+        ground_element = map.get(other.position)
         air1_element = map.get(air1)
         air2_element = map.get(air2)
         air3_element = map.get(air3)
@@ -135,6 +135,8 @@ class MapNode:
             # cost is the distance 1 or sqrt(2) -> gonna try just 1 for now.
             return self.position.distance(other.position)
 
+    def __str__(self) -> str:
+        return f"pos: {self.position}, type: {self.block_type}"
 
 
 

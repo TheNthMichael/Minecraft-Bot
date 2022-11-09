@@ -17,6 +17,12 @@ import cython
 
 from PIL import ImageGrab, Image
 
+def get_middle_top_of_block(block):
+    return block.add(Vector3(0.5, 0, 0.5))
+
+def get_middle_of_block(block):
+    return block.add(Vector3(0.5, 0, 0.5))
+
 # Some math utilities
 def clamp(x, lower, upper):
     if x < lower:
