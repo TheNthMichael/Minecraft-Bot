@@ -21,6 +21,7 @@ from math import floor, ceil
 from map import MapNode
 from pathfinder import Pathfinder
 from pathfinder3d import Pathfinder3D
+from pathfinder3dunopt import Pathfinder3DUnoptimized
 import pydirectinput
 from minecraft import MinecraftPlayer
 import utility
@@ -400,7 +401,7 @@ class Pathfind3DAction(BaseAction):
         if self.start is None:
             self.start = block_position.copy()
         if self.pathfinder is None:
-            self.pathfinder = Pathfinder3D(
+            self.pathfinder = Pathfinder3DUnoptimized(
                 self.start.copy(),
                 self.goal.copy(),
                 agent.qmap
