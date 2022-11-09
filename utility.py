@@ -424,7 +424,8 @@ class Block:
     def __init__(self, position: Vector3, block_type) -> None:
         self.position = position
         self.type = block_type
-        self.instantiated = False
+        self.update_type = False
+        self.voxel = None
 
     def __hash__(self) -> int:
         return hash((self.position.x, self.position.y, self.position.z))
@@ -461,7 +462,7 @@ class Map:
         with self.shared_lock:
             if self.shared_map is not None:
                 block = Block(position, name)
-                self.shared_map.add(block)
+                self.shared_map[position] = block
 
     def add_scan(self, scan: BlockRotation):
         self.scans.add(scan)

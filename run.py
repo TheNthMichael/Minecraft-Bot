@@ -18,7 +18,7 @@ class Voxel(Button):
             model = 'cube',
             origin_y = .5,
             texture = 'white_cube',
-            color = color.rgba(colorrgb[0], colorrgb[1], colorrgb[1], alpha),
+            color = color.rgba(colorrgb[0], colorrgb[1], colorrgb[2], alpha),
             highlight_color = color.lime,
         )
 
@@ -70,20 +70,30 @@ def update():
     sy = 0
     sz = 0
     with shared_lock:
-        for block in shared_map:
+        for key in shared_map:
+            block = shared_map[key]
             sx += block.position.x
             sy += block.position.y
             sz += block.position.z
-            if not block.instantiated:
+            if block.update_type and block.voxel is not None:
+                block.update_type = False
+                colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]]
+                alpha = 255
+                if block.type == "uncertain":
+                    alpha = 20
+                if block.type == "air":
+                    alpha = 60
+                block.voxel.color = color.rgba(0, 0, 255, alpha)
+            if not block.voxel:
                 #print(f"Instantiating block {block}")
                 if block.type == "uncertain":
-                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=20)
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=10)
                 elif block.type == "air":
-                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=60)
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=20)
                 else:
                     if len(block.type) < 3:
                         block.type += "extra"
-                    voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]])
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]])
                 block.instantiated = True
         sl = len(shared_map)
         #print("Num Blocks ", sl)
@@ -120,7 +130,7 @@ def update():
 
 
 shared_lock = Lock()
-shared_map = set()
+shared_map = {}
 
 player_lock = Lock()
 player_position = Vector3(0,0,0)

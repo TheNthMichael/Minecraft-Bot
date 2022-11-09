@@ -349,7 +349,7 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
 
         player.add_action(
             # Pathfind3DAction(Vector3(46.4, -55, -9.5))
-            Pathfind3DAction(Vector3(34, -54, -7))
+            Pathfind3DAction(Vector3(62, -61, 30))
         )
 
 

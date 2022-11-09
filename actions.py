@@ -151,13 +151,21 @@ class MoveToCoordinateAction(BaseAction):
         self.keydown_z = None
         self.keydown_x = None
         self.crouch = False
+        self.crouch_tolerance = 0.9
 
     def act(self, agent: MinecraftPlayer) -> tuple:
         """
         Walk to the given coordinate with no pathfinding.
         """
         if self.start is None:
-                self.start = agent.position.copy()
+            self.start = agent.position.subtract(utility.Vector3(0,1,0))
+            y_level = self.start.subtract(self.goal).y
+            if abs(y_level) < 0.1:
+                self.crouch_tolerance = 2
+            elif y_level > 0:
+                self.crouch_tolerance = 0.89
+            else:
+                self.crouch_tolerance = 0.9
 
         curr_rotation = agent.rotation.copy()
         if curr_rotation.x < 0:
@@ -181,7 +189,6 @@ class MoveToCoordinateAction(BaseAction):
         # Set tolerances
         tap_duration = 0.03
         tap_tolerance = 0.3
-        crouch_tolerance = 0.89 # original was 2, current value allows for auto jump to work.
         error_tolerance = 0.05
 
         # Clean up keys pressed and return True to indicate task completion.
@@ -194,7 +201,7 @@ class MoveToCoordinateAction(BaseAction):
             return True, []
 
         # Crouch if needed
-        if delta_position.magnitude() < crouch_tolerance:
+        if delta_position.magnitude() < self.crouch_tolerance:
                 self.crouch = True
                 pydirectinput.keyDown(crouch)
 
@@ -480,7 +487,7 @@ class Pathfind3DAction(BaseAction):
 
             # Get move from d*-lite move
             next_state = self.pathfinder.iterate_move()
-            print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}")
+            print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}, km={self.pathfinder.k_m}")
 
             if next_state is None:
                 print(f"Arrived at goal {self.goal}")

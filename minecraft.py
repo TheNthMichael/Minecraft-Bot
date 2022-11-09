@@ -202,6 +202,7 @@ class MinecraftPlayer:
             else:
                 element.block_type = self.target_type
                 self.qmap.update(element, False)
+                self.map.shared_map[tpos].update_type = True
 
         if coord and rot:
             # Go through actions

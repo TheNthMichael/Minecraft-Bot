@@ -28,12 +28,12 @@ class Pathfinder3D:
         self.m_goal = map.get(goal)
         if self.m_goal is None:
             self.m_goal = MapNode("uncertain", goal, [])
-            self.m_goal.rhs = 0
             map.add(self.m_goal)
+        self.m_goal.rhs = 0
         self.U.insert(self.m_goal, Priority(self.heuristic(self.m_start, self.m_goal), 0))
         self.compute_shortest_path()
 
-    def contains(self, u: tuple) -> bool:
+    def contains(self, u: MapNode) -> bool:
         return u in self.U.vertices_in_heap
 
     def heuristic(self, s: MapNode, s_prime: MapNode):
@@ -79,7 +79,7 @@ class Pathfinder3D:
                         if s != self.m_goal:
                             costs = [s.cost(s_prime, self.map) + s_prime.g for s_prime in s.successors(self.map)]
                             s.rhs = min(costs)
-                        self.update_vertex(s)
+                    self.update_vertex(s)
 
     def iterate_move(self):
         """
@@ -90,7 +90,15 @@ class Pathfinder3D:
         if self.m_start.rhs == float('inf'):
             raise "NoPathExists"
         
-        self.m_start = min(self.m_start.successors(self.map), key=lambda s_prime: self.m_start.cost(s_prime, self.map) + s_prime.g)
+        print(f"Successors: {[self.m_start.cost(s_prime, self.map) + s_prime.g for s_prime in self.m_start.successors(self.map)]}")
+        prev = self.m_start
+        costs = [(s_prime, self.m_start.cost(s_prime, self.map) + s_prime.g) for s_prime in self.m_start.successors(self.map)]
+        self.m_start, min_cost = min(costs, key=lambda x: x[1])
+        # Settle ties:
+        ties = [x for x in costs if x[1] == min_cost]
+        # break tie as min cost and heuristic.
+        self.m_start, min_cost = min(ties, key=lambda x: prev.cost(x[0], self.map) + self.heuristic(prev, x[0]))
+
         return self.m_start
         # move to self.m_start.
         # get what paths changed (u and v nodes for each path)
@@ -103,6 +111,7 @@ class Pathfinder3D:
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
                 new_cost = u.cost(v, self.map)
+                print(f"{u} -> {v} cost_changed {c_old}->{new_cost}")
                 if c_old > new_cost:
                     if u != self.m_goal:
                         u.rhs = min(u.rhs, new_cost + v.g)

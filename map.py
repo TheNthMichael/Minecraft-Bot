@@ -138,6 +138,22 @@ class MapNode:
     def __str__(self) -> str:
         return f"pos: {self.position}, type: {self.block_type}"
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, MapNode):
+            return self.position == other.position\
+                and self.block_type == other.block_type\
+                and self.g == other.g\
+                and self.rhs == other.rhs
+        return False
+    
+    def __ne__(self, other):
+        """Overrides the default implementation (unnecessary in Python 3)"""
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.position.__hash__(), self.block_type, self.g, self.rhs))
+
 
 
 class QueryMap:
