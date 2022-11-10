@@ -419,17 +419,11 @@ class Pathfind3DAction(BaseAction):
             print("scan")
             self.state = "move"
             # Record edge costs of neighboring states.
-            self.edge_costs_prior = {} # reset the prior costs.
+            if not agent.qmap.recording:
+                agent.qmap.record_edge_cost_changes()
             successors = self.pathfinder.m_start.successors(agent.qmap)
             blocks = set()
             for s_prime in successors:
-                # recording both costs (may not be needed if cost is symmetric)
-                if not self.is_first_iter:
-                    cost_a = self.pathfinder.m_start.cost(s_prime, agent.qmap)
-                    cost_b = s_prime.cost(self.pathfinder.m_start, agent.qmap)
-                    self.edge_costs_prior[(self.pathfinder.m_start.position, s_prime.position)] = (self.pathfinder.m_start, s_prime, cost_a) 
-                    self.edge_costs_prior[(s_prime.position, self.pathfinder.m_start.position)] = (s_prime, self.pathfinder.m_start, cost_b)
-
                 # add block to set to be scanned plus its air nodes.
                 y_level = s_prime.position.subtract(self.pathfinder.m_start.position)
                 blocks.add(s_prime.position)
@@ -443,10 +437,13 @@ class Pathfind3DAction(BaseAction):
             # Add scans and loopback to queue.
             # for all successors, add successor to blocks, followed by 2-3 extra scans if needed.
             scans = [(x, agent.look_at(utility.get_middle_of_block(x))) for x in blocks]
-            events = [FastRotationAction(scan) for _, scan in scans]
-            events.append(self)
+            events = []
             for block, scan in scans:
-                agent.qmap.add_scan(self.pathfinder.m_start.position, utility.BlockRotation(scan, block))
+                new_scan = utility.BlockRotation(scan, block)
+                if len([x for x in self.pathfinder.m_start.scans if x.position == block]) == 0:
+                    events.append(FastRotationAction(scan))
+                    agent.qmap.add_scan(self.pathfinder.m_start.position, new_scan)
+            events.append(self)
             return True, events
         else:
             print("move")
@@ -456,32 +453,18 @@ class Pathfind3DAction(BaseAction):
             for scan in scans:
                 # We can tell if a scan resolved an air node by the what exists in the map at that point.
                 element = agent.qmap.get(scan.position)
-                print(f"querying scan-{scan.position}: {element}")
+                #print(f"querying scan-{scan.position}: {element}")
                 if element is None:
                     agent.qmap.add(MapNode("air", scan.position, []))
                 elif element.block_type == "uncertain":
-                    element.block_type = "air"
-                    agent.qmap.update(element, True)
+                    agent.qmap.update_type(element.position, "air", True)
 
             # Based on the scan and knowledge nodes, get new costs for neighbors.
-            if not self.is_first_iter:
-                successors = self.pathfinder.m_start.successors(agent.qmap)
-                changed_node_pairs = []
-                for s_prime in successors:
-                    # recording both costs (may not be needed if cost is symmetric)
-                    cost_a = self.pathfinder.m_start.cost(s_prime, agent.qmap)
-                    cost_b = s_prime.cost(self.pathfinder.m_start, agent.qmap)
-                    _, _, old_cost_a = self.edge_costs_prior[(self.pathfinder.m_start.position, s_prime.position)]
-                    _, _, old_cost_b = self.edge_costs_prior[(s_prime.position, self.pathfinder.m_start.position)]
-                    
-                    if old_cost_a != cost_a:
-                        changed_node_pairs.append((self.pathfinder.m_start, s_prime, old_cost_a))
-                    if old_cost_b != cost_b:
-                        changed_node_pairs.append((s_prime, self.pathfinder.m_start, old_cost_b))
-
             # Iterate d*-lite scan with nodes that changed cost.
             previous_state = self.pathfinder.m_start
             if not self.is_first_iter:
+                changed_node_pairs = agent.qmap.calculate_node_cost_changes()
+                print(changed_node_pairs)
                 self.pathfinder.iterate_scan(changed_node_pairs)
             else:
                 self.is_first_iter = False

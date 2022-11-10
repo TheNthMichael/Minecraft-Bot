@@ -2,7 +2,7 @@ from priority_queue import PriorityQueue, Priority
 from map import QueryMap, MapNode
 from utils import *
 from utility import Vector3
-
+import time
 
 class Pathfinder3DUnoptimized:
     def __init__(self, start: Vector3, goal: Vector3, map: QueryMap) -> None:
@@ -39,7 +39,9 @@ class Pathfinder3DUnoptimized:
         return u in self.U.vertices_in_heap
 
     def heuristic(self, s: MapNode, s_prime: MapNode):
-        return s.position.distance(s_prime.position)
+        #return s.position.distance(s_prime.position)
+        return s.position.manhattan_distance(s_prime.position)
+        
 
     def update_vertex(self, u: MapNode):
         if u != self.m_goal:
@@ -55,8 +57,8 @@ class Pathfinder3DUnoptimized:
         while self.U.top_key() < self.calculate_key(self.m_start)\
             or self.m_start.rhs != self.m_start.g:
             u = self.U.top()
+            print(f"Viewing {u}")
             self.U.remove(u)
-            print(u)
             k_old = self.U.top_key()
             new_key = self.calculate_key(u)
             if k_old < new_key:
@@ -64,12 +66,14 @@ class Pathfinder3DUnoptimized:
             elif u.g > u.rhs:
                 u.g = u.rhs
                 for s in u.successors(self.map):
+                    #print(f"\tsucc(u)->{s}")
                     self.update_vertex(s)
             else:
                 u.g = float('inf')
                 for s in u.successors(self.map):
                     self.update_vertex(s)
                 self.update_vertex(u) # u cannot be a successor to itself.
+        print(f"compute_shortest_path expanded {MapNode.count} so far")
 
     def iterate_move(self):
         if self.m_start == self.m_goal:
@@ -90,10 +94,11 @@ class Pathfinder3DUnoptimized:
 
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
+            print(f"node costs changed. last: {self.m_last}, start: {self.m_start}")
             print(self.m_last.position)
             print(self.m_start.position)
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
                 self.update_vertex(u)
-            self.compute_shortest_path()
+        self.compute_shortest_path()

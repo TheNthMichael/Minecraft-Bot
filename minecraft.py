@@ -200,8 +200,7 @@ class MinecraftPlayer:
             if element is None:
                 self.qmap.add(MapNode(self.target_type, tpos, []))
             else:
-                element.block_type = self.target_type
-                self.qmap.update(element, False)
+                self.qmap.update_type(tpos, self.target_type, False)
                 self.map.shared_map[tpos].update_type = True
 
         if coord and rot:

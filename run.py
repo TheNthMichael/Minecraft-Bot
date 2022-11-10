@@ -87,9 +87,9 @@ def update():
             if not block.voxel:
                 #print(f"Instantiating block {block}")
                 if block.type == "uncertain":
-                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]], alpha=10)
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
                 elif block.type == "air":
-                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=20)
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=40)
                 else:
                     if len(block.type) < 3:
                         block.type += "extra"
@@ -101,9 +101,9 @@ def update():
             sx /= sl
             sy /= sl
             sz /= sl
-            camera.x = sx - 10
-            camera.y = sy + 10
-            camera.z = sz - 10
+            camera.x = sx - 20
+            camera.y = sy + 20
+            camera.z = sz - 20
 
     with player_lock:
         player.x = -player_position.x + 0.25
@@ -123,9 +123,9 @@ def update():
         #camera.origin = player
         #camera.look_at(player_eyes)
 
-        camera.x = -player_position.x - 10
-        camera.y = player_position.y + 10
-        camera.z = player_position.z - 10
+        camera.x = -player_position.x - 20
+        camera.y = player_position.y + 20
+        camera.z = player_position.z - 20
 
 
 

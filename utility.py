@@ -300,17 +300,21 @@ class BlockRotation:
         return f"(x: {self.position}, theta: {self.rotation})"
 
 class Vector3:
-    def dot_product(first, second):
-        return first.x * second.x + first.y * second.y + first.z * second.z
+    def dot_product(self, second):
+        return self.x * second.x + self.y * second.y + self.z * second.z
 
-    def distance(first, other):
-        return first.subtract(other).magnitude()
+    def distance(self, other):
+        return self.subtract(other).magnitude()
+    
+    def manhattan_distance(self, other):
+        t = self.subtract(other)
+        return abs(t.x) + abs(t.y) + abs(t.z)
 
-    def cross_product(first, second):
+    def cross_product(self, second):
         return Vector3(
-            first.y * second.z - first.z * second.y,
-            -(first.z * second.x - first.x * second.z),
-            first.x * second.y - first.y * second.x
+            self.y * second.z - self.z * second.y,
+            -(self.z * second.x - self.x * second.z),
+            self.x * second.y - self.y * second.x
         )
 
     def __init__(self, x :float, y :float, z :float) -> None:

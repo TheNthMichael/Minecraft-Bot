@@ -35,7 +35,8 @@ class Pathfinder3D:
         return u in self.U.vertices_in_heap
 
     def heuristic(self, s: MapNode, s_prime: MapNode):
-        return s.position.distance(s_prime.position)
+        #return s.position.distance(s_prime.position)
+        return s.position.manhattan_distance(s_prime.position)
     
     def calculate_key(self, u: MapNode):
         return Priority(
@@ -73,11 +74,12 @@ class Pathfinder3D:
                 predecessors_union_u = u.successors(self.map)
                 predecessors_union_u.append(u) # u cannot be its own successor therefore no check for that is needed.
                 for s in predecessors_union_u:
-                    if s.rhs == s.cost(u, self.map) + g_old:
+                    if s.rhs == (s.cost(u, self.map) + g_old):
                         if s != self.m_goal:
                             costs = [s.cost(s_prime, self.map) + s_prime.g for s_prime in s.successors(self.map)]
                             s.rhs = min(costs)
                     self.update_vertex(s)
+        print(f"compute_shortest_path expanded {MapNode.count} so far")
 
     def iterate_move(self):
         """
@@ -118,4 +120,4 @@ class Pathfinder3D:
                         costs = [u.cost(s_prime, self.map) + s_prime.g for s_prime in u.successors(self.map)]
                         u.rhs = min(costs)
                 self.update_vertex(u)
-        self.compute_shortest_path()
+            self.compute_shortest_path()

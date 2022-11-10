@@ -78,6 +78,7 @@ def satisfies_move_preconditions(y_level, ground, air1, air2, air3, air4):
     return ground_predicate and air1_predicate and air2_predicate and air3_predicate
 
 class MapNode:
+    count = 0
     def __init__(self, block_type: str, position: Vector3, scans: list) -> None:
         """
         Create a new map node consiting of the information passed in.
@@ -90,6 +91,21 @@ class MapNode:
         self.scans = copy.deepcopy(scans)
         self.rhs = float('inf')
         self.g = float('inf')
+        if block_type == "uncertain":
+            MapNode.count += 1
+            #print(f"Generated Succ {self}")
+
+    def copy(self):
+        t = MapNode(self.block_type, self.position.copy(), [x.copy() for x in self.scans])
+        t.rhs = self.rhs
+        t.g = self.g
+        return t
+
+    def actions(self):
+        successors = []
+        for action in possible_actions:
+            successors.append(action.add(self.position))
+        return successors
 
     def successors(self, map):
         """
@@ -136,7 +152,7 @@ class MapNode:
             return self.position.distance(other.position)
 
     def __str__(self) -> str:
-        return f"pos: {self.position}, type: {self.block_type}"
+        return f"pos: {self.position}, type: {self.block_type}, rhs: {self.rhs}, g: {self.g}"
 
     def __eq__(self, other):
         """Overrides the default implementation"""
@@ -165,6 +181,98 @@ class QueryMap:
         self.map = {}
         self.other_map = other_map
         self.share_lock = share_lock
+        self.recording = False
+        self.changed_nodes = {}
+
+    def record_edge_cost_changes(self):
+        """
+        Save every node that changed,
+        When we need to calculate prior, revert graph using recorded nodes.
+        Then Unrevert to get the posterior.
+        """
+        self.recording = True
+        self.changed_nodes = {}
+
+    def retrieve_records(self):
+        self.record = False
+        return self.changed_nodes
+
+    def overwrite(self, changes):
+        """
+        Restore the graph its previous state given by the changes.
+        """
+         # restore to record and backup current.
+        backup = {}
+        for key in changes:
+            backup[key] = self.map.get(key, None)
+            if backup[key] is not None:
+                self.map.pop(key, None)
+            if changes[key] is not None:
+                self.map[key] = changes[key]
+        return backup
+
+    def calculate_node_successor_costs(self, positions: list):
+        """
+        Given a list of Vector3 positions. Query the map for the element at that point.
+        We can assert that the map does have a node there. For all possible actions at
+        that node, if there is an element at that action, record the edge costs.
+
+        returns a dict mapping tuple of positions (u,v) to a float cost.
+        """
+        results = {}
+        for key in positions:
+            node = self.map[key]
+            actions = node.actions()
+            for action in actions:
+                s_prime = self.map.get(action, None)
+                if s_prime is not None:
+                    cost_a = node.cost(s_prime, self)
+                    #print(cost_a)
+                    cost_b = s_prime.cost(node, self)
+                    results[(node.position, s_prime.position)] = cost_a
+                    results[(s_prime.position, node.position)] = cost_b
+
+        return results
+
+    def calculate_node_cost_changes(self) -> list:
+        """
+        Uses the recording of added nodes or updated nodes to revert
+        the graph to its prior state and calculate the node costs
+        before any of the changes. It then reverts back to the
+        current graph to check for if any node costs changed.
+
+        I am likely doing something wrong here.
+        """
+        self.recording = False
+        backup = self.overwrite(self.changed_nodes) # graph is reverted to previous state.
+        costs = self.calculate_node_successor_costs(self.changed_nodes.keys())
+        self.overwrite(backup) # graph is restored
+
+        changed_node_pairs = []
+        for key in self.changed_nodes.keys():
+            node = self.map.get(key, None)
+            if node is not None:
+                actions = node.actions()
+                for action in actions:
+                    s_prime = self.map.get(action, None)
+                    if s_prime is not None:
+                        cost_a = node.cost(s_prime, self)
+                        cost_b = s_prime.cost(node, self)
+                        old_cost_a = costs[(node.position, s_prime.position)]
+                        old_cost_b = costs[(s_prime.position, node.position)]
+
+                        old_node = self.changed_nodes.get(key, None)
+                        if old_node is not None:
+                            print(f"{old_node.block_type}-{old_cost_a} ==? {node.block_type}-{cost_a}")  
+                        if old_cost_a != cost_a:
+                            changed_node_pairs.append((node, s_prime, old_cost_a))
+                        if old_cost_b != cost_b:
+                            changed_node_pairs.append((s_prime, node, old_cost_b))
+
+        return changed_node_pairs
+
+        
+
 
     def add(self, element: MapNode) -> None:
         """
@@ -173,6 +281,14 @@ class QueryMap:
         """
         if element.position in self.map:
             raise f"Element {element} already exists in the map."
+
+        if element is None:
+            return
+        
+        # Record the costs prior if we are recording.
+        if self.recording and self.changed_nodes.get(element.position, None) is None:
+            self.changed_nodes[element.position.copy()] = element.copy()
+
         self.map[element.position] = element
         if element.block_type == "uncertain" or element.block_type == "air":
             self.other_map.add_block(element.block_type, element.position)
@@ -182,12 +298,31 @@ class QueryMap:
         Update the element at the given position.
         Used to update uncertain or unknown elements once we gain information.
         """
+        if element is None:
+            return
+
         old_element = self.map.get(element.position, None)
         if old_element is None:
+            if self.recording and self.changed_nodes.get(element.position, None) is None:
+                self.changed_nodes[element.position.copy()] = None
             self.map[element.position] = element
         elif (not only_if_uncertain) or old_element.block_type == "uncertain" or old_element.block_type == "air":
+            if self.recording and self.changed_nodes.get(element.position, None) is None:
+                self.changed_nodes[element.position.copy()] = self.map[element.position].copy()
             self.map.pop(element.position, None)
             self.map[element.position] = element
+
+    def update_type(self, position: Vector3, new_type: str, only_if_uncertain=True):
+        """
+        If block at the given position exists, change its type.
+        """
+        old_element = self.map.get(position, None)
+        if old_element is None:
+            return
+        if (not only_if_uncertain) or old_element.block_type == "uncertain" or old_element.block_type == "air":
+            if self.recording and self.changed_nodes.get(position, None) is None and old_element.block_type != new_type:
+                self.changed_nodes[position.copy()] = old_element.copy()
+            self.map[position].block_type = new_type
 
     def add_scan(self, position: Vector3, scan: BlockRotation):
         """
