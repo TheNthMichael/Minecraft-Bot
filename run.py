@@ -31,6 +31,9 @@ class Voxel(Button):
             if key == 'right mouse down':
                 destroy(self)
 
+    def destroy(self):
+        destroy(self)
+
 
 def update():
     global free_roam, pressed_last_frame
@@ -87,9 +90,14 @@ def update():
             if not block.voxel:
                 #print(f"Instantiating block {block}")
                 if block.type == "uncertain":
-                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
+                    pass
+                    #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
                 elif block.type == "air":
-                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=40)
+                    pass
+                    #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=40)
+                elif block.type == "path_node":
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255,255,255], alpha=255)
+                    block.voxel.scale = (0.2, 0.2, 0.2)
                 else:
                     if len(block.type) < 3:
                         block.type += "extra"

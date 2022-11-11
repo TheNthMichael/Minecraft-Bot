@@ -164,9 +164,9 @@ class MoveToCoordinateAction(BaseAction):
             if abs(y_level) < 0.1:
                 self.crouch_tolerance = 2
             elif y_level > 0:
-                self.crouch_tolerance = 0.89
+                self.crouch_tolerance = 0.5
             else:
-                self.crouch_tolerance = 0.9
+                self.crouch_tolerance = 0.5
 
         curr_rotation = agent.rotation.copy()
         if curr_rotation.x < 0:
@@ -193,7 +193,7 @@ class MoveToCoordinateAction(BaseAction):
         error_tolerance = 0.05
 
         # Clean up keys pressed and return True to indicate task completion.
-        if abs(delta_position.x) < error_tolerance and abs(delta_position.z) < error_tolerance:
+        if abs(delta_position.x) < error_tolerance and abs(delta_position.z) < error_tolerance and abs(delta_position.y + 1) < error_tolerance:
             if self.crouch:
                 pydirectinput.keyUp(crouch)
             pydirectinput.keyUp(self.keydown_z)
@@ -203,8 +203,13 @@ class MoveToCoordinateAction(BaseAction):
 
         # Crouch if needed
         if delta_position.magnitude() < self.crouch_tolerance:
+            if not self.crouch:
                 self.crouch = True
                 pydirectinput.keyDown(crouch)
+        else:
+            if self.crouch:
+                self.crouch = False
+                pydirectinput.keyUp(crouch)
 
         # Handle forward backwards.
         if abs(delta_position.z) > error_tolerance:
@@ -464,7 +469,7 @@ class Pathfind3DAction(BaseAction):
             previous_state = self.pathfinder.m_start
             if not self.is_first_iter:
                 changed_node_pairs = agent.qmap.calculate_node_cost_changes()
-                print(changed_node_pairs)
+                #print(changed_node_pairs)
                 self.pathfinder.iterate_scan(changed_node_pairs)
             else:
                 self.is_first_iter = False

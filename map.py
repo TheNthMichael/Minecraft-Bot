@@ -261,9 +261,6 @@ class QueryMap:
                         old_cost_a = costs[(node.position, s_prime.position)]
                         old_cost_b = costs[(s_prime.position, node.position)]
 
-                        old_node = self.changed_nodes.get(key, None)
-                        if old_node is not None:
-                            print(f"{old_node.block_type}-{old_cost_a} ==? {node.block_type}-{cost_a}")  
                         if old_cost_a != cost_a:
                             changed_node_pairs.append((node, s_prime, old_cost_a))
                         if old_cost_b != cost_b:

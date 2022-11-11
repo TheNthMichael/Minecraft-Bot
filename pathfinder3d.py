@@ -11,6 +11,7 @@ class Pathfinder3D:
         """
         Initialize the d*-lite algorithm.
         """
+        self.current_path = []
         self.U = PriorityQueue()
         self.k_m = 0
         self.map = map
@@ -80,6 +81,7 @@ class Pathfinder3D:
                             s.rhs = min(costs)
                     self.update_vertex(s)
         print(f"compute_shortest_path expanded {MapNode.count} so far")
+        self.print_shortest_path()
 
     def iterate_move(self):
         """
@@ -103,6 +105,27 @@ class Pathfinder3D:
         # move to self.m_start.
         # get what paths changed (u and v nodes for each path)
 
+    def print_shortest_path(self):
+        for e in self.current_path:
+            self.map.other_map.remove_dummy_block(e.position)
+
+        self.current_path = []
+        current = self.m_start
+        while current != self.m_goal:
+            if current.rhs == float('inf'):
+                raise "NoPathExists"
+
+            prev = current
+            costs = [(s_prime, current.cost(s_prime, self.map) + s_prime.g) for s_prime in current.successors(self.map)]
+            current, min_cost = min(costs, key=lambda x: x[1])
+            # Settle ties:
+            ties = [x for x in costs if x[1] == min_cost]
+            # break tie as min cost and heuristic.
+            current, min_cost = min(ties, key=lambda x: prev.cost(x[0], self.map) + self.heuristic(prev, x[0]))
+            temp_node = current.copy()
+            self.map.other_map.add_dummy_block("path_node", temp_node.position)
+            self.current_path.append(temp_node)
+
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
             print(self.m_last.position)
@@ -111,7 +134,7 @@ class Pathfinder3D:
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
                 new_cost = u.cost(v, self.map)
-                print(f"{u} -> {v} cost_changed {c_old}->{new_cost}")
+                #print(f"{u} -> {v} cost_changed {c_old}->{new_cost}")
                 if c_old > new_cost:
                     if u != self.m_goal:
                         u.rhs = min(u.rhs, new_cost + v.g)

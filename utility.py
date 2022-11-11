@@ -461,6 +461,20 @@ class Map:
         return {x for x in self.current_map if predicate(x)}
 
     
+    def add_dummy_block(self, name, position: Vector3):
+        with self.shared_lock:
+            if self.shared_map is not None:
+                block = Block(position, name)
+                self.shared_map[(position, "d")] = block
+
+    def remove_dummy_block(self, position: Vector3):
+        with self.shared_lock:
+            if self.shared_map is not None:
+                if self.shared_map.get((position, "d"), None) is not None:
+                    if self.shared_map[(position, "d")].voxel is not None:
+                        self.shared_map[(position, "d")].voxel.destroy()
+                    del self.shared_map[(position, "d")]
+    
     def add_block(self, name, position: Vector3):
         self.current_map[position] = Block(position, name)
         with self.shared_lock:

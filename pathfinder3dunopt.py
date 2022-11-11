@@ -9,6 +9,7 @@ class Pathfinder3DUnoptimized:
         """
         Initialize the unoptimized version of the d*-lite algorithm.
         """
+        self.current_path = []
         self.U = PriorityQueue()
         self.k_m = 0
         self.map = map
@@ -57,7 +58,7 @@ class Pathfinder3DUnoptimized:
         while self.U.top_key() < self.calculate_key(self.m_start)\
             or self.m_start.rhs != self.m_start.g:
             u = self.U.top()
-            print(f"Viewing {u}")
+            #print(f"Viewing {u}")
             self.U.remove(u)
             k_old = self.U.top_key()
             new_key = self.calculate_key(u)
@@ -74,6 +75,7 @@ class Pathfinder3DUnoptimized:
                     self.update_vertex(s)
                 self.update_vertex(u) # u cannot be a successor to itself.
         print(f"compute_shortest_path expanded {MapNode.count} so far")
+        self.print_shortest_path()
 
     def iterate_move(self):
         if self.m_start == self.m_goal:
@@ -94,11 +96,39 @@ class Pathfinder3DUnoptimized:
 
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
-            print(f"node costs changed. last: {self.m_last}, start: {self.m_start}")
-            print(self.m_last.position)
-            print(self.m_start.position)
+            #print(f"node costs changed. last: {self.m_last}, start: {self.m_start}")
+            #print(self.m_last.position)
+            #print(self.m_start.position)
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
                 self.update_vertex(u)
         self.compute_shortest_path()
+
+    def print_shortest_path(self):
+        for e in self.current_path:
+            self.map.other_map.remove_dummy_block(e.position)
+
+        self.current_path = []
+        current = self.m_start
+        last_4 = [None, None, None, None]
+        i = 0
+        m = 4
+        while current != self.m_goal:
+            if current.rhs == float('inf'):
+                raise "NoPathExists"
+            prev = current
+            costs = [(s_prime, current.cost(s_prime, self.map) + s_prime.g) for s_prime in current.successors(self.map)]
+            current, min_cost = min(costs, key=lambda x: x[1])
+            # Settle ties:
+            ties = [x for x in costs if x[1] == min_cost]
+            # break tie as min cost and heuristic.
+            current, min_cost = min(ties, key=lambda x: prev.cost(x[0], self.map) + self.heuristic(prev, x[0]))
+            temp_node = current.copy()
+            self.map.other_map.add_dummy_block("path_node", temp_node.position)
+            self.current_path.append(temp_node)
+            last_4[i] = temp_node
+            i = (i + 1) % 4
+            if last_4[0] == last_4[2] and last_4[1] == last_4[3]:
+                print("stuck in a loop")
+                return
