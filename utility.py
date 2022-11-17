@@ -278,7 +278,7 @@ class BlockRotation:
 
     def __eq__(self, other):
         """Overrides the default implementation"""
-        if isinstance(other, Vector3):
+        if isinstance(other, BlockRotation):
             return self.position.__eq__(other.position) and self.rotation.__eq__(other.rotation)
             #return self.x == other.x and self.y == other.y and self.z == other.z
         return False
@@ -289,9 +289,6 @@ class BlockRotation:
 
     def __hash__(self):
         return hash((self.position.__hash__(), self.rotation.__hash__()))
-
-    def copy(self):
-        return BlockRotation(self.position.copy(), self.rotation.copy())
 
     def __repr__(self) -> str:
         return f"(x: {self.position}, theta: {self.rotation})"

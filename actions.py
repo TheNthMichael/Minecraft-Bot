@@ -22,6 +22,7 @@ from map import MapNode
 from pathfinder import Pathfinder
 from pathfinder3d import Pathfinder3D
 from pathfinder3dunopt import Pathfinder3DUnoptimized
+from astar import AStar
 import pydirectinput
 from minecraft import MinecraftPlayer
 import utility
@@ -406,7 +407,7 @@ class Pathfind3DAction(BaseAction):
         if self.start is None:
             self.start = block_position.copy()
         if self.pathfinder is None:
-            self.pathfinder = Pathfinder3DUnoptimized(
+            self.pathfinder = AStar(
                 self.start.copy(),
                 self.goal.copy(),
                 agent.qmap
@@ -476,7 +477,7 @@ class Pathfind3DAction(BaseAction):
 
             # Get move from d*-lite move
             next_state = self.pathfinder.iterate_move()
-            print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}, km={self.pathfinder.k_m}")
+            print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}")
 
             if next_state is None:
                 print(f"Arrived at goal {self.goal}")

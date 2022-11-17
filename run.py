@@ -90,8 +90,8 @@ def update():
             if not block.voxel:
                 #print(f"Instantiating block {block}")
                 if block.type == "uncertain":
-                    pass
-                    #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
+                    #pass
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
                 elif block.type == "air":
                     pass
                     #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=40)

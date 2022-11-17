@@ -91,6 +91,7 @@ class MapNode:
         self.scans = copy.deepcopy(scans)
         self.rhs = float('inf')
         self.g = float('inf')
+        self.backpointer = None
         if block_type == "uncertain":
             MapNode.count += 1
             #print(f"Generated Succ {self}")
@@ -99,6 +100,7 @@ class MapNode:
         t = MapNode(self.block_type, self.position.copy(), [x.copy() for x in self.scans])
         t.rhs = self.rhs
         t.g = self.g
+        t.backpointer = self.backpointer
         return t
 
     def actions(self):
@@ -158,9 +160,7 @@ class MapNode:
         """Overrides the default implementation"""
         if isinstance(other, MapNode):
             return self.position == other.position\
-                and self.block_type == other.block_type\
-                and self.g == other.g\
-                and self.rhs == other.rhs
+                and self.block_type == other.block_type
         return False
     
     def __ne__(self, other):
@@ -168,7 +168,7 @@ class MapNode:
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.position.__hash__(), self.block_type, self.g, self.rhs))
+        return hash((self.position.__hash__(), self.block_type))
 
 
 
@@ -183,6 +183,14 @@ class QueryMap:
         self.share_lock = share_lock
         self.recording = False
         self.changed_nodes = {}
+
+    def clear_pathfinding_values(self):
+        for k in self.map:
+            v = self.map[k]
+            if v is not None:
+                v.g = float('inf')
+                v.rhs = float('inf')
+                v.backpointer = None
 
     def record_edge_cost_changes(self):
         """
