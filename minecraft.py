@@ -54,6 +54,7 @@ class MinecraftPlayer:
 
         self.map = Map(shared_map=shared_map, shared_lock=shared_lock)
         self.qmap = QueryMap(self.map, None)
+        self.qmap.record_edge_cost_changes()
 
         self.action_queue = []
 

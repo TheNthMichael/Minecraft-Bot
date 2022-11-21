@@ -1,8 +1,10 @@
 from ursina import *
 
 from threading import Thread, Lock, Event
+from queue import Queue
 import datacollector
 from minecraft import *
+from actions import Pathfind3DAction, LookAtAction
 
 
 app = Ursina()
@@ -26,10 +28,10 @@ class Voxel(Button):
     def input(self, key):
         if self.hovered:
             if key == 'left mouse down':
-                voxel = Voxel(position=self.position + mouse.normal)
+                q.put(Pathfind3DAction(Vector3(-self.position.x, self.position.y, self.position.z)))
 
             if key == 'right mouse down':
-                destroy(self)
+                q.put(LookAtAction(Vector3(-self.position.x, self.position.y, self.position.z)))
 
     def destroy(self):
         destroy(self)
@@ -172,7 +174,9 @@ window.late_init()
 window.position = Vec2(3500, 1920/3)
 Sky()
 
-data = Thread(target=datacollector.start, args=(shared_map, shared_lock, running, player_position, player_forward, player_lock))
+q = Queue()
+
+data = Thread(target=datacollector.start, args=(shared_map, shared_lock, running, player_position, player_forward, player_lock, q))
 
 data.start()
 try:

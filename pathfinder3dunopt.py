@@ -19,7 +19,7 @@ class Pathfinder3DUnoptimized:
             self.m_start = MapNode("ground", start, [])
             print(f"Starting pathfinder from node {self.m_start.position}-{self.m_start.block_type}")
             self.map.add(self.m_start)
-            #raise "Error, cannot pathfind without knowing where the ground is (Scan downward before starting)"
+
         self.m_last = self.m_start
         self.goal = goal
         self.m_goal = map.get(goal)
@@ -47,7 +47,7 @@ class Pathfinder3DUnoptimized:
     def update_vertex(self, u: MapNode):
         if u != self.m_goal:
             costs = [u.cost(s_prime, self.map) + s_prime.g\
-                for s_prime in u.successors(self.map)]
+                for s_prime in u.successors(self.map, lazy=True)]
             u.rhs = min(costs)
         if self.contains(u):
             self.U.remove(u)
@@ -58,7 +58,6 @@ class Pathfinder3DUnoptimized:
         while self.U.top_key() < self.calculate_key(self.m_start)\
             or self.m_start.rhs != self.m_start.g:
             u = self.U.top()
-            #print(f"Viewing {u}")
             self.U.remove(u)
             k_old = self.U.top_key()
             new_key = self.calculate_key(u)
@@ -67,7 +66,6 @@ class Pathfinder3DUnoptimized:
             elif u.g > u.rhs:
                 u.g = u.rhs
                 for s in u.successors(self.map):
-                    #print(f"\tsucc(u)->{s}")
                     self.update_vertex(s)
             else:
                 u.g = float('inf')
@@ -96,14 +94,11 @@ class Pathfinder3DUnoptimized:
 
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
-            #print(f"node costs changed. last: {self.m_last}, start: {self.m_start}")
-            #print(self.m_last.position)
-            #print(self.m_start.position)
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
                 self.update_vertex(u)
-        self.compute_shortest_path()
+            self.compute_shortest_path()
 
     def print_shortest_path(self):
         for e in self.current_path:

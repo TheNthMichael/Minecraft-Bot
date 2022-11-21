@@ -109,7 +109,7 @@ class MapNode:
             successors.append(action.add(self.position))
         return successors
 
-    def successors(self, map):
+    def successors(self, map, lazy=False):
         """
         Return which of the maximum 4 minimum 0 branches out of the 12 are allowed.
         We can determine info by querying the map after a scan.
@@ -119,6 +119,8 @@ class MapNode:
         
         property: exists((dx, dy, dz)) and air(dx, dy+1, dz) and air(dx, dy+2, dz) <and one_is_zero(dx, dz) and (dx, dy, dz) in (-1, 0, 1)> <these will be predetermined by possible actions list>
         MapGet((dx, dy, dz))
+        @param map - the QueryMap containing all known/uncertain MapNodes.
+        @param lazy - If this is True, non-existing MapNodes will not be added to the map to persist.
         """
         # All actions here are possible, however the cost is determined by the canMovePreconditions.
         # If an uncertain map element does not exist, we need to create it.
@@ -129,7 +131,8 @@ class MapNode:
             ground_element = map.get(ground)
             if ground_element is None:
                 ground_element = MapNode("uncertain", ground, [])
-                map.add(ground_element)
+                if not lazy:
+                    map.add(ground_element)
 
             successors.append(ground_element)
         return successors
@@ -233,12 +236,12 @@ class QueryMap:
             actions = node.actions()
             for action in actions:
                 s_prime = self.map.get(action, None)
-                if s_prime is not None:
-                    cost_a = node.cost(s_prime, self)
-                    #print(cost_a)
-                    cost_b = s_prime.cost(node, self)
-                    results[(node.position, s_prime.position)] = cost_a
-                    results[(s_prime.position, node.position)] = cost_b
+                if s_prime is None:
+                    s_prime = MapNode("uncertain", action, [])
+                cost_a = node.cost(s_prime, self)
+                cost_b = s_prime.cost(node, self)
+                results[(node.position, s_prime.position)] = cost_a
+                results[(s_prime.position, node.position)] = cost_b
 
         return results
 
@@ -263,16 +266,18 @@ class QueryMap:
                 actions = node.actions()
                 for action in actions:
                     s_prime = self.map.get(action, None)
-                    if s_prime is not None:
-                        cost_a = node.cost(s_prime, self)
-                        cost_b = s_prime.cost(node, self)
-                        old_cost_a = costs[(node.position, s_prime.position)]
-                        old_cost_b = costs[(s_prime.position, node.position)]
+                    if s_prime is None:
+                        s_prime = MapNode("uncertain", action, [])
 
-                        if old_cost_a != cost_a:
-                            changed_node_pairs.append((node, s_prime, old_cost_a))
-                        if old_cost_b != cost_b:
-                            changed_node_pairs.append((s_prime, node, old_cost_b))
+                    cost_a = node.cost(s_prime, self)
+                    cost_b = s_prime.cost(node, self)
+                    old_cost_a = costs[(node.position, s_prime.position)]
+                    old_cost_b = costs[(s_prime.position, node.position)]
+
+                    if old_cost_a != cost_a:
+                        changed_node_pairs.append((node, s_prime, old_cost_a))
+                    if old_cost_b != cost_b:
+                        changed_node_pairs.append((s_prime, node, old_cost_b))
 
         return changed_node_pairs
 
@@ -312,7 +317,7 @@ class QueryMap:
                 self.changed_nodes[element.position.copy()] = None
             self.map[element.position] = element
         elif (not only_if_uncertain) or old_element.block_type == "uncertain" or old_element.block_type == "air":
-            if self.recording and self.changed_nodes.get(element.position, None) is None:
+            if self.recording:
                 self.changed_nodes[element.position.copy()] = self.map[element.position].copy()
             self.map.pop(element.position, None)
             self.map[element.position] = element
@@ -325,7 +330,7 @@ class QueryMap:
         if old_element is None:
             return
         if (not only_if_uncertain) or old_element.block_type == "uncertain" or old_element.block_type == "air":
-            if self.recording and self.changed_nodes.get(position, None) is None and old_element.block_type != new_type:
+            if self.recording and old_element.block_type != new_type:
                 self.changed_nodes[position.copy()] = old_element.copy()
             self.map[position].block_type = new_type
 

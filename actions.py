@@ -407,7 +407,7 @@ class Pathfind3DAction(BaseAction):
         if self.start is None:
             self.start = block_position.copy()
         if self.pathfinder is None:
-            self.pathfinder = AStar(
+            self.pathfinder = Pathfinder3D(
                 self.start.copy(),
                 self.goal.copy(),
                 agent.qmap
@@ -419,6 +419,7 @@ class Pathfind3DAction(BaseAction):
             and abs(delta_position.z) < 0.8\
             and abs(delta_position.y) < 0.8:
             print(f"[INFO] Pathfinding complete, arrived at {self.goal} with error {delta_position}")
+            agent.qmap.clear_pathfinding_values()
             return True, []
 
         if self.state == "scan":
@@ -470,8 +471,9 @@ class Pathfind3DAction(BaseAction):
             previous_state = self.pathfinder.m_start
             if not self.is_first_iter:
                 changed_node_pairs = agent.qmap.calculate_node_cost_changes()
-                #print(changed_node_pairs)
                 self.pathfinder.iterate_scan(changed_node_pairs)
+                if not agent.qmap.recording:
+                    agent.qmap.record_edge_cost_changes()
             else:
                 self.is_first_iter = False
 
@@ -481,6 +483,7 @@ class Pathfind3DAction(BaseAction):
 
             if next_state is None:
                 print(f"Arrived at goal {self.goal}")
+                agent.qmap.clear_pathfinding_values()
                 return True, []
 
             # Add move and loopback to queue unless at goal.
@@ -505,3 +508,11 @@ class ClickAction(BaseAction):
             pydirectinput.leftClick(duration=self.duration)
             print("righclicked")
         return True, []
+
+class LookAtAction(BaseAction):
+    def __init__(self, position: utility.Vector3) -> None:
+        self.position = position
+    
+    def act(self, agent: MinecraftPlayer) -> tuple:
+        rt = agent.look_at(self.position)
+        return True, [FastRotationAction(rt)]

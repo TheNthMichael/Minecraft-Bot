@@ -308,7 +308,7 @@ def fstahce_lidar(player: MinecraftPlayer, r):
 
 
 
-def start(shared_map, shared_lock, running, shared_player_position, player_forward, shared_player_position_lock):
+def start(shared_map, shared_lock, running, shared_player_position, player_forward, shared_player_position_lock, q):
     mode = "s"
     if mode == "s":
         # SinglePlayer
@@ -343,9 +343,9 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         time.sleep(3)
         print("Starting")
 
-        player.add_action(
-            FastRotationAction(Vector2(0, 90))
-        )
+        #player.add_action(
+            #FastRotationAction(Vector2(0, 90))
+        #)
 
         player.add_action(
             # Pathfind3DAction(Vector3(46.4, -55, -9.5))
@@ -353,7 +353,8 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
             #Pathfind3DAction(Vector3(61, -61, 47)) # Simple straight hallway
             #Pathfind3DAction(Vector3(59, -61, 59)) # Right turn
             #Pathfind3DAction(Vector3(54, -61, 61))
-            Pathfind3DAction(Vector3(21, -61, 64)) # 3D Maze
+            #Pathfind3DAction(Vector3(21, -61, 64)) # 3D Maze
+            Pathfind3DAction(Vector3(74, -61, 42)) # Basic Case for D*-lite failure
         )
 
 
@@ -367,6 +368,13 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
 
         # Run forever unless you press Esc
         while running.is_set():
+            try:
+                data = q.get(block=False)
+
+                if data is not None:
+                    player.add_action(data)
+            except:
+                pass
 
             success = player.update(api)
 
