@@ -94,7 +94,6 @@ class MapNode:
         self.backpointer = None
         if block_type == "uncertain":
             MapNode.count += 1
-            #print(f"Generated Succ {self}")
 
     def copy(self):
         t = MapNode(self.block_type, self.position.copy(), [x.copy() for x in self.scans])
@@ -108,6 +107,14 @@ class MapNode:
         for action in possible_actions:
             successors.append(action.add(self.position))
         return successors
+
+    def successor_path_exists(self, map):
+        succ = self.successors(map, lazy=True)
+        for s in succ:
+            if s.cost(self, map) != float('inf'):
+                return True
+
+        return False
 
     def successors(self, map, lazy=False):
         """
@@ -232,7 +239,9 @@ class QueryMap:
         """
         results = {}
         for key in positions:
-            node = self.map[key]
+            node = self.map.get(key, None)
+            if node is None:
+                node = MapNode("uncertain", key, [])
             actions = node.actions()
             for action in actions:
                 s_prime = self.map.get(action, None)
@@ -278,11 +287,8 @@ class QueryMap:
                         changed_node_pairs.append((node, s_prime, old_cost_a))
                     if old_cost_b != cost_b:
                         changed_node_pairs.append((s_prime, node, old_cost_b))
-
+        changed_node_pairs = [*set(changed_node_pairs)]
         return changed_node_pairs
-
-        
-
 
     def add(self, element: MapNode) -> None:
         """
@@ -296,11 +302,11 @@ class QueryMap:
             return
         
         # Record the costs prior if we are recording.
-        if self.recording and self.changed_nodes.get(element.position, None) is None:
-            self.changed_nodes[element.position.copy()] = element.copy()
+        if self.recording: #  and element.block_type != "uncertain"
+            self.changed_nodes[element.position.copy()] = None
 
         self.map[element.position] = element
-        if element.block_type == "uncertain" or element.block_type == "air":
+        if (element.block_type == "uncertain" or element.block_type == "air") and self.other_map is not None:
             self.other_map.add_block(element.block_type, element.position)
 
     def update(self, element: MapNode, only_if_uncertain=True) -> None:
@@ -313,7 +319,7 @@ class QueryMap:
 
         old_element = self.map.get(element.position, None)
         if old_element is None:
-            if self.recording and self.changed_nodes.get(element.position, None) is None:
+            if self.recording: # and element.block_type != "uncertain"
                 self.changed_nodes[element.position.copy()] = None
             self.map[element.position] = element
         elif (not only_if_uncertain) or old_element.block_type == "uncertain" or old_element.block_type == "air":
@@ -333,6 +339,8 @@ class QueryMap:
             if self.recording and old_element.block_type != new_type:
                 self.changed_nodes[position.copy()] = old_element.copy()
             self.map[position].block_type = new_type
+            if self.other_map is not None:
+                self.other_map.update_block_type_vis(position, new_type)
 
     def add_scan(self, position: Vector3, scan: BlockRotation):
         """

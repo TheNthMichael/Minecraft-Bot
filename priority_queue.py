@@ -1,3 +1,6 @@
+import math
+
+
 class Priority:
     """
     handle lexicographic order of keys
@@ -17,7 +20,7 @@ class Priority:
         :param other: comparable keys
         :return: lexicographic order
         """
-        return self.k1 < other.k1 or (self.k1 == other.k1 and self.k2 < other.k2)
+        return self.k1 < other.k1 or (math.isclose(self.k1, other.k1, rel_tol=1e-6) and self.k2 < other.k2)
 
     def __le__(self, other):
         """
@@ -25,7 +28,7 @@ class Priority:
         :param other: comparable keys
         :return: lexicographic order
         """
-        return self.k1 < other.k1 or (self.k1 == other.k1 and self.k2 <= other.k2)
+        return self.k1 < other.k1 or (math.isclose(self.k1, other.k1, rel_tol=1e-6) and self.k2 <= other.k2)
 
 
 class PriorityNode:

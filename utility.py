@@ -268,6 +268,80 @@ def press_key_for_t(key, t):
             pydirectinput.keyUp(key)
             break
 
+def Bresenham3D(a, b):
+    x1 = int(a.x)
+    y1 = int(a.y)
+    z1 = int(a.z)
+    x2 = int(b.x)
+    y2 = int(b.y)
+    z2 = int(b.z)
+    ListOfPoints = []
+    ListOfPoints.append(Vector3(x1, y1, z1))
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    dz = abs(z2 - z1)
+    if (x2 > x1):
+        xs = 1
+    else:
+        xs = -1
+    if (y2 > y1):
+        ys = 1
+    else:
+        ys = -1
+    if (z2 > z1):
+        zs = 1
+    else:
+        zs = -1
+  
+    # Driving axis is X-axis"
+    if (dx >= dy and dx >= dz):        
+        p1 = 2 * dy - dx
+        p2 = 2 * dz - dx
+        while (x1 != x2):
+            x1 += xs
+            if (p1 >= 0):
+                y1 += ys
+                p1 -= 2 * dx
+            if (p2 >= 0):
+                z1 += zs
+                p2 -= 2 * dx
+            p1 += 2 * dy
+            p2 += 2 * dz
+            ListOfPoints.append(Vector3(x1, y1, z1))
+  
+    # Driving axis is Y-axis"
+    elif (dy >= dx and dy >= dz):       
+        p1 = 2 * dx - dy
+        p2 = 2 * dz - dy
+        while (y1 != y2):
+            y1 += ys
+            if (p1 >= 0):
+                x1 += xs
+                p1 -= 2 * dy
+            if (p2 >= 0):
+                z1 += zs
+                p2 -= 2 * dy
+            p1 += 2 * dx
+            p2 += 2 * dz
+            ListOfPoints.append(Vector3(x1, y1, z1))
+  
+    # Driving axis is Z-axis"
+    else:        
+        p1 = 2 * dy - dz
+        p2 = 2 * dx - dz
+        while (z1 != z2):
+            z1 += zs
+            if (p1 >= 0):
+                y1 += ys
+                p1 -= 2 * dz
+            if (p2 >= 0):
+                x1 += xs
+                p2 -= 2 * dz
+            p1 += 2 * dy
+            p2 += 2 * dx
+            ListOfPoints.append(Vector3(x1, y1, z1))
+    return ListOfPoints
+
 class BlockRotation:
     def __init__(self, rotation, position) -> None:
         self.rotation = rotation
@@ -473,11 +547,24 @@ class Map:
                     del self.shared_map[(position, "d")]
     
     def add_block(self, name, position: Vector3):
-        self.current_map[position] = Block(position, name)
+        m = self.current_map.get(position, None)
+        if m is None:
+            self.current_map[position] = Block(position, name)
+            with self.shared_lock:
+                if self.shared_map is not None:
+                    block = Block(position, name)
+                    self.shared_map[position] = block
+
+    def update_block_type_vis(self, position: Vector3, new_type: str):
+        b = self.current_map.get(position, None)
+        if b is not None:
+            b.type = new_type
         with self.shared_lock:
             if self.shared_map is not None:
-                block = Block(position, name)
-                self.shared_map[position] = block
+                block = self.shared_map.get(position, None)
+                if block is not None:
+                    self.shared_map[position].type = new_type
+                    self.shared_map[position].update_type = True
 
     def add_scan(self, scan: BlockRotation):
         self.scans.add(scan)

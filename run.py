@@ -81,26 +81,28 @@ def update():
             sy += block.position.y
             sz += block.position.z
             if block.update_type and block.voxel is not None:
+                #print(f"Updating {block}") TODO: This still gets called every frame and is kind of a performance concern.
                 block.update_type = False
                 colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]]
                 alpha = 255
                 if block.type == "uncertain":
-                    alpha = 20
+                    alpha = 30
                 if block.type == "air":
-                    alpha = 60
+                    alpha = 20
                 block.voxel.color = color.rgba(0, 0, 255, alpha)
-            if not block.voxel:
+            if block.voxel is None:
                 #print(f"Instantiating block {block}")
                 if block.type == "uncertain":
                     #pass
                     block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255, 0, 0], alpha=30)
                 elif block.type == "air":
-                    pass
-                    #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=40)
+                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[0,0,255], alpha=20)
                 elif block.type == "path_node":
-                    block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255,255,255], alpha=255)
-                    block.voxel.scale = (0.2, 0.2, 0.2)
+                    pass
+                    #block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[255,255,255], alpha=255)
+                    #block.voxel.scale = (0.2, 0.2, 0.2)
                 else:
+                    print(f"Adding {block}")
                     if len(block.type) < 3:
                         block.type += "extra"
                     block.voxel = Voxel(position=(-block.position.x, block.position.y, block.position.z), colorrgb=[(ord(c.lower())-97)*8 for c in block.type[:3]])

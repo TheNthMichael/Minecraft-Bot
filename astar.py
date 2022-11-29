@@ -29,7 +29,12 @@ class AStar:
 
     def heuristic(self, s: MapNode, s_prime: MapNode):
         #return s.position.distance(s_prime.position)
-        return s.position.manhattan_distance(s_prime.position)
+        #return s.position.manhattan_distance(s_prime.position)
+        dv = s.position.subtract(s_prime.position)
+        dx = abs(dv.x)
+        dy = abs(dv.y)
+        dz = abs(dv.z)
+        return (dx + (2**0.5 * dy) + dz)
 
     def get_best_node_index(self):
         if len(self.open) == 0:
@@ -45,6 +50,8 @@ class AStar:
         return best_node
     
     def iterate_scan(self, changed_node_pairs):
+        if not self.m_goal.successor_path_exists(self.map):
+            raise "No path exists..."
         if len(changed_node_pairs) != 0:
             self.map_changed = True
 
@@ -61,7 +68,7 @@ class AStar:
             self.map.clear_pathfinding_values()
             self.current_path = self.compute_shortest_path()
 
-            if self.current_path is None:
+            if self.current_path is None or not self.m_goal.successor_path_exists(self.map):
                 raise "No path exists..."
 
         if len(self.current_path) == 0:

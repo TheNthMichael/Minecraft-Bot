@@ -15,7 +15,6 @@ from minecraft import *
 def move_mouse(x, y):
     ctypes.windll.user32.mouse_event(0x01, x, y, 0, 0)
 
-
 def scan_63(player: MinecraftPlayer):
     angles = [
         # Row 1
@@ -42,7 +41,6 @@ def scan_63(player: MinecraftPlayer):
     for angle in angles:
         player.add_rotation_to_queue(angle)
 
-
 def scan_333(player: MinecraftPlayer):
     """
     From the current coordinate, look a the 3x3 cube surrounding the player.
@@ -62,7 +60,6 @@ def scan_333(player: MinecraftPlayer):
     for x in ex_levels:
         for y in ey_levels:
             player.add_rotation_to_queue(Vector2(x, y))
-
 
 def walk_fill_square(player: MinecraftPlayer, n):
     """
@@ -84,7 +81,6 @@ def walk_fill_square(player: MinecraftPlayer, n):
 
     player.add_rotation_to_queue(Vector2(0, 0))
 
-
 def walk_square(player: MinecraftPlayer, n):
     origin = Vector3(1.5, -60, -27.5)
 
@@ -94,7 +90,6 @@ def walk_square(player: MinecraftPlayer, n):
     player.add_coordinates_to_queue(Vector3(origin.x - n, origin.y, origin.z + n))
     player.add_coordinates_to_queue(Vector3(origin.x - n, origin.y, origin.z))
     player.add_coordinates_to_queue(Vector3(origin.x, origin.y, origin.z))
-
 
 def make_square(player: MinecraftPlayer, n):
     """
@@ -225,7 +220,6 @@ def user_select_boxes():
     cv2.destroyAllWindows()
     return states
 
-
 def slwahce_lidar(player: MinecraftPlayer, r):
     """
     slow-*** lidar, scans the r-sphere around the player.
@@ -260,7 +254,6 @@ def slwahce_lidar(player: MinecraftPlayer, r):
         for x_theta in range(0, 360, int(dtheta(radius))):
             player.add_smooth_rotation_to_queue(Vector2(x_theta - 180, y_theta - 90), 1)
         y_theta += dy_theta
-
 
 def fstahce_lidar(player: MinecraftPlayer, r):
     """
@@ -306,7 +299,18 @@ def fstahce_lidar(player: MinecraftPlayer, r):
             player.add_smooth_rotation_to_queue(Vector2(x_theta - 180, y_theta - 90), 1)
         y_theta += dy_theta
 
-
+def create_square(player: MinecraftPlayer, origin: Vector3, r: int):
+    player.add_action(Pathfind3DAction(origin)) # Move to origin
+    blocks = []
+    for i in range(r):
+        for j in range(r):
+            blocks.append(origin.add(Vector3(i, 0, j)))
+    for block in blocks:
+        print(block)
+        goal = block.add(Vector3(-3, 0, 0))
+        player.add_action(Pathfind3DAction(goal))
+        player.add_action(LookAtAction(get_middle_top_of_block(block)))
+        player.add_action(ClickAction("right", 0.1))
 
 def start(shared_map, shared_lock, running, shared_player_position, player_forward, shared_player_position_lock, q):
     mode = "s"
@@ -349,13 +353,15 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
 
         player.add_action(
             # Pathfind3DAction(Vector3(46.4, -55, -9.5))
-            #Pathfind3DAction(Vector3(62, -61, 30)) #Simple 3d
+            Pathfind3DAction(Vector3(62, -61, 30)) #Simple 3d
             #Pathfind3DAction(Vector3(61, -61, 47)) # Simple straight hallway
             #Pathfind3DAction(Vector3(59, -61, 59)) # Right turn
             #Pathfind3DAction(Vector3(54, -61, 61))
             #Pathfind3DAction(Vector3(21, -61, 64)) # 3D Maze
-            Pathfind3DAction(Vector3(74, -61, 42)) # Basic Case for D*-lite failure
+            #Pathfind3DAction(Vector3(74, -61, 42)) # Basic Case for D*-lite failure
         )
+
+        #create_square(player, Vector3(78, -61, -7), 5)
 
 
         #player.add_action(MoveToCoordinateAction(Vector3(-8.5, -60, -27.5)))

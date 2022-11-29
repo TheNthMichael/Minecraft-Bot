@@ -48,51 +48,33 @@ class Pathfinder3D:
     def update_vertex(self, u: MapNode):        
         u_contains = self.contains(u)
         if u.g != u.rhs and u_contains:
-            if u.position == Vector3(72, -61, 40):
-                print("1")
             self.U.update(u, self.calculate_key(u))
         elif u.g != u.rhs and not u_contains:
-            if u.position == Vector3(72, -61, 40):
-                print("2")
             self.U.insert(u, self.calculate_key(u))
         elif u.g == u.rhs and u_contains:
-            if u.position == Vector3(72, -61, 40):
-                print("3")
             self.U.remove(u)
 
     def compute_shortest_path(self):
         while self.U.top_key() < self.calculate_key(self.m_start) or self.m_start.rhs > self.m_start.g:
             u = self.U.top()
-            if u.position == Vector3(72, -61, 40):
-                print(u)
             k_old = self.U.top_key()
             k_new = self.calculate_key(u)
 
             if k_old < k_new:
-                if u.position == Vector3(72, -61, 40):
-                    print("Here")
                 self.U.update(u, k_new)
             elif u.g > u.rhs:
-                if u.position == Vector3(72, -61, 40):
-                    print("Here2")
                 u.g = u.rhs
                 self.U.remove(u)
                 for s in u.successors(self.map):
                     if s != self.m_goal:
                         s.rhs = min(s.rhs, s.cost(u, self.map) + u.g)
-                        if s.position == Vector3(72, -61, 40):
-                            print(f"Viewing succ here {s}")
                     self.update_vertex(s)
             else:
-                if u.position == Vector3(72, -61, 40):
-                    print("Here3")
                 g_old = u.g
                 u.g = float('inf')
                 predecessors_union_u = u.successors(self.map)
                 predecessors_union_u.append(u) # u cannot be its own successor therefore no check for that is needed.
                 for s in predecessors_union_u:
-                    if s.position == Vector3(72, -61, 40):
-                        print(f"Viewing succ here2 {s}")
                     if s.rhs == (s.cost(u, self.map) + g_old):
                         if s != self.m_goal:
                             costs = [s.cost(s_prime, self.map) + s_prime.g for s_prime in s.successors(self.map, lazy=True)]
@@ -146,7 +128,7 @@ class Pathfinder3D:
 
     def iterate_scan(self, changed_node_pairs):
         if len(changed_node_pairs) != 0:
-            print("The following changed:")
+            #print("The following changed:")
             self.k_m += self.heuristic(self.m_last, self.m_start)
             self.m_last = self.m_start
             for u, v, c_old in changed_node_pairs:
@@ -160,4 +142,4 @@ class Pathfinder3D:
                         costs = [u.cost(s_prime, self.map) + s_prime.g for s_prime in u.successors(self.map)]
                         u.rhs = min(costs)
                 self.update_vertex(u)
-            self.compute_shortest_path()
+        self.compute_shortest_path()

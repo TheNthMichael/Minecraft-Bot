@@ -204,6 +204,24 @@ class MinecraftPlayer:
                 self.qmap.update_type(tpos, self.target_type, False)
                 self.map.shared_map[tpos].update_type = True
 
+            raycast = Bresenham3D(self.position_at_eye, self.forward.scalar_mult(20).add(self.position_at_eye))
+
+            current_node_ordering = self.target_position.subtract(self.position_at_eye).magnitude()
+            #print("-------------")
+            for block in raycast:
+                ordering = block.subtract(self.position_at_eye).magnitude()
+                node_at_block = self.qmap.get(block)
+
+                if ordering < current_node_ordering:
+                    #print(block)
+                    # if we have a block here and it should have been detected instead of the block we actually saw
+                    if  node_at_block is not None and node_at_block.block_type != "air":
+                        print(f"block removed -> {block}")
+                        self.qmap.update_type(block, "air", only_if_uncertain=False)
+                        self.map.shared_map[block].update_type = True
+                    elif node_at_block is None:
+                        self.qmap.add(MapNode("air", block, []))
+
         if coord and rot:
             # Go through actions
             self.serve_action()

@@ -407,7 +407,7 @@ class Pathfind3DAction(BaseAction):
         if self.start is None:
             self.start = block_position.copy()
         if self.pathfinder is None:
-            self.pathfinder = Pathfinder3D(
+            self.pathfinder = AStar(
                 self.start.copy(),
                 self.goal.copy(),
                 agent.qmap
@@ -447,9 +447,14 @@ class Pathfind3DAction(BaseAction):
             events = []
             for block, scan in scans:
                 new_scan = utility.BlockRotation(scan, block)
+                qmap_result = agent.qmap.get(block)
                 if len([x for x in self.pathfinder.m_start.scans if x.position == block]) == 0:
-                    events.append(FastRotationAction(scan))
                     agent.qmap.add_scan(self.pathfinder.m_start.position, new_scan)
+                    if qmap_result is not None:
+                        if qmap_result.block_type != "uncertain":
+                            continue # skip a known block, still add scan since we know whats there
+                    events.append(FastRotationAction(scan))
+                    
             events.append(self)
             return True, events
         else:
@@ -469,13 +474,14 @@ class Pathfind3DAction(BaseAction):
             # Based on the scan and knowledge nodes, get new costs for neighbors.
             # Iterate d*-lite scan with nodes that changed cost.
             previous_state = self.pathfinder.m_start
-            if not self.is_first_iter:
-                changed_node_pairs = agent.qmap.calculate_node_cost_changes()
-                self.pathfinder.iterate_scan(changed_node_pairs)
-                if not agent.qmap.recording:
-                    agent.qmap.record_edge_cost_changes()
-            else:
+            changed_node_pairs = agent.qmap.calculate_node_cost_changes()
+            if not agent.qmap.recording:
+                agent.qmap.record_edge_cost_changes()
+            self.pathfinder.iterate_scan(changed_node_pairs)
+            if self.is_first_iter:
                 self.is_first_iter = False
+                self.pathfinder.compute_shortest_path()
+                
 
             # Get move from d*-lite move
             next_state = self.pathfinder.iterate_move()
