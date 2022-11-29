@@ -352,8 +352,8 @@ def start(shared_map, shared_lock, running, shared_player_position, player_forwa
         #)
 
         player.add_action(
-            # Pathfind3DAction(Vector3(46.4, -55, -9.5))
-            Pathfind3DAction(Vector3(62, -61, 30)) #Simple 3d
+            Pathfind3DAction(Vector3(46, -56, -10)) # 2D Maze
+            #Pathfind3DAction(Vector3(62, -61, 30)) #Simple 3d
             #Pathfind3DAction(Vector3(61, -61, 47)) # Simple straight hallway
             #Pathfind3DAction(Vector3(59, -61, 59)) # Right turn
             #Pathfind3DAction(Vector3(54, -61, 61))

@@ -215,7 +215,7 @@ class MinecraftPlayer:
                 if ordering < current_node_ordering:
                     #print(block)
                     # if we have a block here and it should have been detected instead of the block we actually saw
-                    if  node_at_block is not None and node_at_block.block_type != "air":
+                    if node_at_block is not None and node_at_block.block_type != "air":
                         print(f"block removed -> {block}")
                         self.qmap.update_type(block, "air", only_if_uncertain=False)
                         self.map.shared_map[block].update_type = True

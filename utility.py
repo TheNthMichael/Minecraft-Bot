@@ -3,7 +3,7 @@ Module handles all the utility functions and classes for minecraft.py
 """
 
 from cmath import isclose, nan
-from math import ceil, cos, sin, radians
+from math import ceil, floor, cos, sin, radians
 from msilib.schema import Error
 import cv2
 import ctypes
@@ -268,7 +268,10 @@ def press_key_for_t(key, t):
             pydirectinput.keyUp(key)
             break
 
+# Need a better algorithm - see "A faster voxel traversal algorithm for raytracing"
 def Bresenham3D(a, b):
+    a.apply_func_to_all(int)
+    b.apply_func_to_all(int)
     x1 = int(a.x)
     y1 = int(a.y)
     z1 = int(a.z)
@@ -397,6 +400,11 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
+
+    def apply_func_to_all(self, v):
+        self.x = v(self.x)
+        self.y = v(self.y)
+        self.z = v(self.z)
     
     def magnitude(self):
         return (self.x**2 + self.y**2 + self.z**2)**0.5
