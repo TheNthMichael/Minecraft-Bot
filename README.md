@@ -1,9 +1,12 @@
+# For the professor or TA reviewing this project for uml's AI course:
+This project has several constraints that prevent one from just running this code on your own. Since this code is a controller for minecraft, an instance of this game must be installed. It also uses a specific version (1.18.1) however this likely doesn't effect much as the debug menu rarely goes through extreme changes. Secondly, you must install all dependencies including tesseract ocr and a custom package for minecraft fonts. Since this takes more work than I imagine you would like to do, as recommended by the TA, I will be uploading a video showing the agent pathfinding through two mazes with varying types of solutions.
+
 # What is This?
 This project is a heavily WIP controller for the game Minecraft (using version 1.18.1 for now). This agent is unique compared to most other bots as it can only interact with the game through the same methods that a human can by "seeing" with screen captures and "moving" by simulating mouse and keyboard events. The game provides a debug menu through f3 with readable text giving enough information to create an accurate and relatively fast performing agent (given some of the constraints we deal with).
 
 
 We define four bounding boxes that covers the information from the debug menu that we are interested in: position, orientation, block look at position, and block look at type. The first two bits on information tell us the current state of our agent. From this we can define a PID loop to control the movement (i.e. tell the agent to go to block (x', y', z') or tell the agent to move its orientation to
-$(\theta, \phi)$ *This isn't being parsed for some reason?*)
+$(\theta, \phi)$)
 The second two bits of information allow us to scan the environment and build up a map based on what our agent can see. While we could theoretically simulate ray casting by scanning every block on the 20 radius sphere that the game allows you to scan, due to the speed of collecting data being heavily limited due to the speed of screen capture, OCR, and the in game data refresh rate, this becomes infeasible, taking up to 1-2 minutes per scan. We can however lower the radius of this sphere to lower the number of moves required, thus increasing the speed of the scan. For the case of pathfinding, we will limit our information to be only whats necessary to determine the next move which is about 14 rotations total without removing scans for moves that are deemed "impossible". We can also do look ahead calls to the pathfinder without moving and look at the point the pathfinder returns to scan and see if the ground is there. This may let us premptively build up a path. and come up with a general formula for if said path is possible.
 
 # Current Problems:
@@ -11,8 +14,22 @@ The second two bits of information allow us to scan the environment and build up
 This is heavily a WIP, some of these requirements were a pain to setup and so I would not expect being able to run this as is until I set this project up for end users and add a way for users to setup keybinds, adjusting mouse speed, setup the roi for screen captures, and setting up tesserocr for faster ocr. ~Some parts of this code are poorly optimized due to setting up my own event queue for actions however ended up using dictionary collections to contain data for each event~ *fixed*. On my machine it runs decently fast however you may have a different experience depending on how fast tesserocr and screen grabbing runs on your machine. This tool also uses pydirectinput for input and may at times steal your mouse and buttons away - This is obnoxious but I haven't added support for a quick exit keybind, just alt tab until you see the ursina game engine window and hit alt-f4.
 
 # Pathfinding code
-Pathfinding code was snabbed from https://github.com/mdeyo/d-star-lite
-Thank you for the code as I was too lazy to understand the psuedo code from that 2002 paper. I will however have to add support for 3d pathfinding with d*-field or whatever the name was. ~~I'll figure it out later~~. I guess now is later :/
+d_star_lite.py was snabbed from https://github.com/mdeyo/d-star-lite but only supports 2d pathfinding - has an issue where it gets stuck in a loop.
+
+
+pathfinder3d.py implements the optimized version of d*-lite but has an issue where it gets stuck in a loop that I am unsure how to resolve.
+
+
+pathfinder3dunopt.py implements the unoptimized version of d*-lite and has the same looping issue.
+
+(Are you seeing a pattern here?)
+
+The D*-lite algorithm, at least as the 2002 paper by Sven Koenig describes it has a major flaw where it can get stuck when major changes to the graph occur. This is especially prevalent in 3d environments, making it very difficult to get a working example of this algorithm working for the project. For now and for this project submission, I will not be further working on implementing the D*-lite algorithm and will instead use A* with replanning.
+
+
+astar.py implements the A* pathfinding algorithm and fully works for most cases except when given a node under the map or floating in the air. This can be avoided by setting a max search distance however this can be somewhat limiting. The reason this happens is that there could be a bridge or cave that leads to the node that exists some arbitrary distance away, so in order to find that path, the pathfinder would search endlessly to see if it exists thus never terminating since the search space is infinite.
+
+# How map information is stored:
 
 I am still using d*-lite however I rewrote it from the sven koenig paper and adapted it to use a QueryMap and MapNode to generate successors and costs on the fly instead of using an actual graph. The QueryMap is a HashMap that stores MapNodes given a 3 element Vector defining its position in the graph. This lets us easily query about successors by querying about the position vectors adjacent to the current states position. The MapNodes contain all the information relevant to pathfinding and may have to have certain values reset on new pathfinding sessions (g and rhs). MapNodes contain the position, name/type, list of scan rays, g, and rhs properties. The cost between nodes is defined by a 1 or infinity depending on if it satisfies a predicate that indicates if a transition is even possible. This predicate requires us to know if a block is free or not. This means that we will either have to query surrounding nodes for information on if a given block is free based on rays, or we can insert an element called "air" into the graph whenever we scan and confirm that a block does not exist. This leads to a trade off between an increase in time complexity or an increase in space complexity. Since I have a fairly large amount of ram, I doubt the extra blocks will be a problem. The pathfinding event is broken up into two parts, scanning and moving. We start the event by initializing the pathfinder and recording the starting point. We then record the current transition costs for the adjacent nodes followed by inserting the required scans for the current blocks (whatever scans were not already done) and add the loopback pathfinding event and return. In the second state of pathfinding, after the scan, we check for the new costs of transitioning to the adjacent nodes and if there is any difference, create a list of node pairs with changed costs and what the old cost was. This is handed off to the d*-lite algorithm which will update its costs for any nodes it considers to be "locally inconsistent" and then generate the next node in the path. We then insert a move event for this next node and a loopback to the pathfinding where we will repeat this two stage process until we arrive at the goal state.
 

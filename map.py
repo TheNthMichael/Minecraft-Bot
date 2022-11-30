@@ -95,6 +95,28 @@ class MapNode:
         if block_type == "uncertain":
             MapNode.count += 1
 
+    def get_scans_required(self, map):
+        successors = self.successors(map)
+        blocks = set()
+        for s_prime in successors:
+            # add block to set to be scanned plus its air nodes.
+            y_level = s_prime.position.subtract(self.position)
+            blocks.add(s_prime.position)
+            blocks.add(s_prime.position.add(Vector3(0, 1, 0)))
+            blocks.add(s_prime.position.add(Vector3(0, 2, 0)))
+            if y_level != 0:
+                blocks.add(s_prime.position.add(Vector3(0, 3, 0)))
+            if y_level == 1:
+                blocks.add(self.position.add(Vector3(0, 3, 0)))
+        result = []
+        for block in blocks:
+            m = map.get(block)
+            if m is None:
+                result.append(m)
+            elif m.block_type == "uncertain":
+                result.append(m)
+        return result
+
     def copy(self):
         t = MapNode(self.block_type, self.position.copy(), [x.copy() for x in self.scans])
         t.rhs = self.rhs

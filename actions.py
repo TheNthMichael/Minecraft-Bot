@@ -182,6 +182,8 @@ class MoveToCoordinateAction(BaseAction):
 
         delta_position = desired_position_rotated.subtract(curr_position_rotated)
 
+        delta_position_normal = self.goal.subtract(agent.position.subtract(utility.Vector3(0,1,0)))
+
         forwards = "w"
         backwards = "s"
         left = "a"
@@ -203,7 +205,7 @@ class MoveToCoordinateAction(BaseAction):
             return True, []
 
         # Crouch if needed
-        if delta_position.magnitude() < self.crouch_tolerance:
+        if delta_position_normal.magnitude() < self.crouch_tolerance:
             if not self.crouch:
                 self.crouch = True
                 pydirectinput.keyDown(crouch)
@@ -498,6 +500,112 @@ class Pathfind3DAction(BaseAction):
                 MoveToCoordinateAction(utility.get_middle_top_of_block(next_state.position)),
                 self
             ]
+
+            return True, events
+
+class Pathfind3DAStarAction(BaseAction):
+    def __init__(self, goal: utility.Vector3) -> None:
+        self.goal = goal
+        self.state = "scan"
+        self.is_first_iter = True
+        self.start = None
+        self.pathfinder = None
+        self.edge_costs_prior = {}
+
+    def act(self, agent: MinecraftPlayer) -> tuple:
+        current_position = agent.position.subtract(utility.Vector3(0, 1, 0))
+        
+        # Convert from floats to grid.
+        block_position = agent.position.subtract(utility.Vector3(0, 1, 0))
+        block_position.x = min(floor(block_position.x), ceil(block_position.x))
+        block_position.y = min(floor(block_position.y), ceil(block_position.y))
+        block_position.z = min(floor(block_position.z), ceil(block_position.z))
+
+        if self.start is None:
+            self.start = block_position.copy()
+        if self.pathfinder is None:
+            self.pathfinder = AStar(
+                self.start.copy(),
+                self.goal.copy(),
+                agent.qmap
+            )
+
+        delta_position = self.goal.subtract(block_position)
+
+        if abs(delta_position.x) < 0.8\
+            and abs(delta_position.z) < 0.8\
+            and abs(delta_position.y) < 0.8:
+            print(f"[INFO] Pathfinding complete, arrived at {self.goal} with error {delta_position}")
+            agent.qmap.clear_pathfinding_values()
+            return True, []
+
+        if self.state == "scan":
+            print("scan")
+            self.state = "move"
+            # Record edge costs of neighboring states.
+            if not agent.qmap.recording:
+                agent.qmap.record_edge_cost_changes()
+            successors = self.pathfinder.m_start.successors(agent.qmap)
+            blocks = set()
+            for s_prime in successors:
+                # add block to set to be scanned plus its air nodes.
+                y_level = s_prime.position.subtract(self.pathfinder.m_start.position)
+                blocks.add(s_prime.position)
+                blocks.add(s_prime.position.add(utility.Vector3(0, 1, 0)))
+                blocks.add(s_prime.position.add(utility.Vector3(0, 2, 0)))
+                if y_level != 0:
+                    blocks.add(s_prime.position.add(utility.Vector3(0, 3, 0)))
+                if y_level == 1:
+                    blocks.add(self.pathfinder.m_start.position.add(utility.Vector3(0, 3, 0)))
+
+            # Add scans and loopback to queue.
+            # for all successors, add successor to blocks, followed by 2-3 extra scans if needed.
+            scans = [(x, agent.look_at(utility.get_middle_of_block(x))) for x in blocks]
+            events = []
+            for block, scan in scans:
+                new_scan = utility.BlockRotation(scan, block)
+                qmap_result = agent.qmap.get(block)
+                if len([x for x in self.pathfinder.m_start.scans if x.position == block]) == 0:
+                    agent.qmap.add_scan(self.pathfinder.m_start.position, new_scan)
+                    if qmap_result is not None:
+                        if qmap_result.block_type != "uncertain":
+                            continue # skip a known block, still add scan since we know whats there
+                    events.append(FastRotationAction(scan))
+                    
+            events.append(self)
+            return True, events
+        else:
+            print("move")
+            self.state = "scan"
+            # Based on the scan, insert knowledge nodes into map (only air nodes for now)
+            scans = self.pathfinder.m_start.scans
+            for scan in scans:
+                # We can tell if a scan resolved an air node by the what exists in the map at that point.
+                element = agent.qmap.get(scan.position)
+                #print(f"querying scan-{scan.position}: {element}")
+                if element is None:
+                    agent.qmap.add(MapNode("air", scan.position, []))
+                elif element.block_type == "uncertain":
+                    agent.qmap.update_type(element.position, "air", True)
+
+            # Based on the scan and knowledge nodes, get new costs for neighbors.
+            # Iterate d*-lite scan with nodes that changed cost.
+            previous_state = self.pathfinder.m_start
+            changed_node_pairs = agent.qmap.calculate_node_cost_changes()
+            if not agent.qmap.recording:
+                agent.qmap.record_edge_cost_changes()
+            self.pathfinder.iterate_scan(changed_node_pairs)
+
+            # Get path from A*
+            next_states = self.pathfinder.iterate_move()
+            events = []
+            for next_state in next_states:
+                print(f"Moving to state: {next_state.position}-{next_state.block_type} with cost {previous_state.cost(next_state, agent.qmap)}")
+                events.append(FastRotationAction(agent.look_at(utility.get_middle_of_block(next_state.position))))
+                events.append(MoveToCoordinateAction(utility.get_middle_top_of_block(next_state.position)))
+
+            # Add move and loopback to queue unless at goal.
+            events.append(self)
 
             return True, events
 

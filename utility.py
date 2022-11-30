@@ -268,6 +268,115 @@ def press_key_for_t(key, t):
             pydirectinput.keyUp(key)
             break
 
+
+def sign2(x):
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    else:
+        return 0
+def FRAC0(x):
+    return x - floor(x)
+
+def FRAC1(x):
+    return 1 - x + floor(x)
+
+def fast_voxel_traversal_3D(a, b):
+    result = []
+    tMaxX = 0
+    tMaxY = 0
+    tMaxZ = 0
+    tDeltaX = 0
+    tDeltaY = 0
+    tDeltaZ = 0
+    voxel = Vector3(0,0,0)
+
+    x1 = a.x
+    y1 = a.y
+    z1 = a.z
+
+    x2 = b.x
+    y2 = b.y
+    z2 = b.z
+
+    dx = sign2(x2 - x1)
+    if dx != 0:
+        tDeltaX = min(dx / (x2 - x1), 10000000.0)
+    else:
+        tDeltaX = 10000000.0
+    if dx > 0:
+        tMaxX = tDeltaX * FRAC1(x1)
+    else:
+        tMaxX = tDeltaX * FRAC0(x1)
+    voxel.x = int(x1)
+
+    dy = sign2(y2 - y1)
+    if dy != 0:
+        tDeltaY = min(dy / (y2 - y1), 10000000.0)
+    else:
+        tDeltaY = 10000000.0
+    if dy > 0:
+        tMaxY = tDeltaY * FRAC1(y1)
+    else:
+        tMaxY = tDeltaY * FRAC0(y1)
+    voxel.y = int(y1)
+
+    dz = sign2(z2 - z1)
+    if dz != 0:
+         tDeltaZ = min(dz / (z2 - z1), 10000000.0)
+    else:
+        tDeltaZ = 10000000.0
+    if dz > 0:
+        tMaxZ = tDeltaZ * FRAC1(z1)
+    else:
+        tMaxZ = tDeltaZ * FRAC0(z1)
+    voxel.z = int(z1)
+
+    while True:
+        if tMaxX < tMaxY:
+            if tMaxX < tMaxZ:
+                voxel.x += dx
+                tMaxX += tDeltaX
+            else:
+                voxel.z += dz
+                tMaxZ += tDeltaZ
+            
+        else:
+            if tMaxY < tMaxZ:
+                voxel.y += dy
+                tMaxY += tDeltaY
+            else:
+                voxel.z += dz
+                tMaxZ += tDeltaZ
+        if tMaxX > 1 and tMaxY > 1 and tMaxZ > 1:
+            break
+        # process voxel here
+        add_voxel = True
+        if len(result) != 0:
+            # Remove points captured on the diagnol.
+            prev = result[-1]
+            c_prev = get_middle_of_block(prev)
+            d = get_middle_of_block(voxel.copy())
+            cd = d.subtract(c_prev)
+            ab = a.subtract(b)
+            if isclose(cd.dot_product(ab), 0, rel_tol=1e-7) and isclose(cd.magnitude(), 2**0.5, rel_tol=1e-7):
+                result.pop()
+                add_voxel = False
+        if add_voxel:
+            result.append(voxel.copy())
+    return result
+
+"""def fast_voxel_traversal_3D(a, b):
+    grid_width = 1
+    DV = b.subtract(a)
+    t_delta_v = DV.apply_func_copy(lambda x: grid_width / x)
+    t_max_v = Vector3(
+        t_delta_v.x * (1.0 - (DV.x / grid_width)),
+        t_delta_v.y * (1.0 - (DV.y / grid_width)),
+        t_delta_v.z * (1.0 - (DV.z / grid_width))
+    )"""
+
 # Need a better algorithm - see "A faster voxel traversal algorithm for raytracing"
 def Bresenham3D(a, b):
     a.apply_func_to_all(int)
@@ -400,6 +509,12 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
+
+    def apply_func_copy(self, v):
+        x = v(self.x)
+        y = v(self.y)
+        z = v(self.z)
+        return Vector3(x,y,z)
 
     def apply_func_to_all(self, v):
         self.x = v(self.x)

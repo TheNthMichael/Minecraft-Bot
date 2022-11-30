@@ -1,5 +1,9 @@
 import math
 
+"""
+This code has been copied for use in the unoptimized and optimized version of the d*lite algorithm
+"""
+
 
 class Priority:
     """

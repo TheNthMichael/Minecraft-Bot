@@ -3,7 +3,7 @@ from map import QueryMap, MapNode
 from utils import *
 from utility import Vector3
 import math
-# https://github.com/mds1/path-planning/blob/d6ee3e08b1cb2935e1c298ff2fb66af5fd7bc718/all_functions.py#L903 Maybe
+# https://github.com/mds1/path-planning/blob/d6ee3e08b1cb2935e1c298ff2fb66af5fd7bc718/all_functions.py#L903 may possibly resolve the looping issue.
 class Pathfinder3DUnoptimized:
     def __init__(self, start: Vector3, goal: Vector3, map: QueryMap) -> None:
         """

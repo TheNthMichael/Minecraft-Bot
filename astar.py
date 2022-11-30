@@ -48,6 +48,47 @@ class AStar:
                 best_node = idx
 
         return best_node
+
+    def get_dir(self, v: Vector3):
+        if v.x + v.y + v.z != 1:
+            return -1
+        elif v.x == 1:
+            return 0
+        elif v.y == 1:
+            return 1
+        elif v.z == 1:
+            return 2
+        else:
+            raise "Not Valid"
+
+    def linearize_path(self, start: MapNode, path: list):
+        # let x = 0, y = 1, z = 2
+        # There's no point in doing this on paths of 2 or less nodes. 
+        if len(path) <= 2:
+            return path
+        result = []
+        dv = path[1].position.subtract(start.position)
+        dv.apply_func_to_all(abs)
+        last_dir = self.get_dir(dv)
+        if last_dir == -1:
+            result.append(path[1])
+
+        for i in range(len(path) - 1):
+            curr = path[i]
+            next = path[i+1]
+            dv = curr.position.subtract(next.position)
+            dv.apply_func_to_all(abs)
+            dir = self.get_dir(dv)
+            if dir == -1:
+                result.append(curr)
+                print("HERE")
+            elif last_dir != dir:
+                result.append(curr)
+                last_dir = dir
+        result.append(path[-1])
+        #result = [*set(result)] # Shouldn't be needed, unsure if there is a weird edge case.
+        return result
+
     
     def iterate_scan(self, changed_node_pairs):
         if not self.m_goal.successor_path_exists(self.map):
@@ -62,7 +103,7 @@ class AStar:
         @param current_state - Where we are starting the pathfinding from.
         @param map_changed - True if the map changed, False otherwise.
 
-        @returns A MapNode element giving the next move to make. 
+        @returns A list of linearized MapNode elements that we can traverse without needing to rescan.
         """
         if self.map_changed:
             self.map.clear_pathfinding_values()
@@ -73,13 +114,43 @@ class AStar:
 
         if len(self.current_path) == 0:
             raise "You were already at the goal"
+
+        path = self.current_path[1:]
+
+        #print(path)
+
+        """last_index = 0
+        for idx, node in enumerate(path):
+            if len(node.get_scans_required(self.map)) != 0:
+                last_index = idx
+                break
+            last_index = idx"""
+
+        """print(last_index)
+        # Get the subpath.
+        sub_path = path[:last_index + 1]
+        print(sub_path)
+
+        # Linearize the path such that we remove nodes between points that are straight lines.
+        linearized_sub_path = self.linearize_path(self.m_start, sub_path)
+
+        # Set the start to the node on the last index.
+        self.m_start = path[last_index]
+
+        # Set the current path to last index + 1 to the end.
+        self.current_path = path[last_index:]
+
+        print(linearized_sub_path)
+
+        return linearized_sub_path"""
+
         
         next_step = self.current_path[1]
         self.current_path = self.current_path[2:]
 
         self.m_start = next_step
 
-        return next_step
+        return [next_step]
 
 
     def compute_shortest_path(self):
