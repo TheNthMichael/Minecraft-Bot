@@ -282,6 +282,7 @@ def FRAC0(x):
 def FRAC1(x):
     return 1 - x + floor(x)
 
+# Implemented from https://www.cse.chalmers.se/edu/year/2011/course/TDA361/grid.pdf
 def fast_voxel_traversal_3D(a, b):
     result = []
     tMaxX = 0
@@ -366,16 +367,6 @@ def fast_voxel_traversal_3D(a, b):
         if add_voxel:
             result.append(voxel.copy())
     return result
-
-"""def fast_voxel_traversal_3D(a, b):
-    grid_width = 1
-    DV = b.subtract(a)
-    t_delta_v = DV.apply_func_copy(lambda x: grid_width / x)
-    t_max_v = Vector3(
-        t_delta_v.x * (1.0 - (DV.x / grid_width)),
-        t_delta_v.y * (1.0 - (DV.y / grid_width)),
-        t_delta_v.z * (1.0 - (DV.z / grid_width))
-    )"""
 
 # Need a better algorithm - see "A faster voxel traversal algorithm for raytracing"
 def Bresenham3D(a, b):
